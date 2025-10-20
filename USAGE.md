@@ -2,22 +2,18 @@
 
 ## Running the Application
 
-To run the application, execute the following command:
+To run the application, execute the following command from the project's root directory:
 
 ```bash
 python main.py
 ```
 
-This will open the graphical user interface.
+This will open the main window.
 
-## Crawling for Seeds
+## How it Works
 
-The crawler will start automatically 5 seconds after the application starts. To stop the crawler, select "Stop Crawler" from the "Tools" menu. To restart it, select "Start Crawler" from the "Tools" menu.
-
-## Searching for Seeds
-
-To search for seeds, enter your query in the search bar and click the "Search" button. The results will be displayed in the table below.
+The application automatically starts a DHT crawler five seconds after it launches. This crawler listens to the BitTorrent DHT network and discovers new torrents in real-time. As new torrents are discovered, their metadata (name, size, file count, and info-hash) is saved to a local SQLite database (`seeds.db`) and displayed in the main window.
 
 ## Finding Related Seeds
 
-To find seeds related to a torrent in the results table, right-click on the torrent and select "Find Related". This will perform a new search using the name of the selected torrent as the query.
+To find seeds related to a torrent in the list, right-click on the torrent and select "Find Related Seeds". This will perform a new search using the name of the selected torrent as the query and display the results in the log panel for now.

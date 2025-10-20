@@ -1,143 +1,171 @@
-import tkinter as tk
-from tkinter import ttk, scrolledtext
-import threading
 import sys
+import time
+import libtorrent as lt
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QTableWidget, QTableWidgetItem, QTextEdit, QSplitter, QMenuBar, QMenu,
+    QDialog, QLabel, QMenu
+)
+from PySide6.QtCore import Qt, QThread, Signal, QObject, QTimer
+
 from crawler import Crawler
-from db.database import create_database, search_seeds
-import sqlite3
-import ctypes
+from db.database import create_connection, create_table, search_seeds
 
-class App:
-    def __init__(self, root):
-        try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except:
-            pass
-        self.root = root
-        self.root.title("BTSeedAggregator")
-        self.crawler_thread = None
+class CrawlerWorker(QObject):
+    new_torrent = Signal(str, int, int, str)
+    log_message = Signal(str)
+
+    def __init__(self, db_file):
+        super().__init__()
+        self.db_file = db_file
         self.crawler = None
+        self._running = False
 
-        self.create_menu()
+    def run(self):
+        self._running = True
+        self.log_message.emit("Crawler starting...")
+        conn = create_connection(self.db_file)
+        create_table(conn)
+        self.crawler = Crawler(conn)
 
-        main_frame = ttk.Frame(root)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        while self._running:
+            try:
+                alerts = self.crawler.session.pop_alerts()
+                for alert in alerts:
+                    if isinstance(alert, lt.dht_announce_alert):
+                        info_hash = alert.info_hash
+                        params = {
+                            'save_path': '.',
+                            'storage_mode': lt.storage_mode_t(2),
+                            'paused': False,
+                            'auto_managed': True,
+                            'duplicate_is_error': True,
+                            'info_hash': info_hash
+                        }
+                        self.crawler.metadata_session.add_torrent(params)
 
-        # Sidebar
-        sidebar = ttk.Frame(main_frame, width=150)
-        sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+                metadata_alerts = self.crawler.metadata_session.pop_alerts()
+                for alert in metadata_alerts:
+                    if isinstance(alert, lt.metadata_received_alert):
+                        info = alert.get_torrent_info()
+                        size = info.total_size()
+                        files = info.num_files()
+                        name = info.name()
+                        info_hash_str = str(info.info_hash())
+                        self.crawler.insert_seed(name, size, files, info_hash_str)
+                        self.new_torrent.emit(name, size, files, info_hash_str)
+                time.sleep(1)
+            except Exception as e:
+                self.log_message.emit(f"Crawler error: {e}")
 
-        # Main content area
-        content_frame = ttk.Frame(main_frame)
-        content_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.crawler.conn.close()
+        self.log_message.emit("Crawler stopped.")
 
-        # Search bar
-        search_frame = ttk.Frame(content_frame)
-        search_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        search_label = ttk.Label(search_frame, text="Search:")
-        search_label.pack(side=tk.LEFT, padx=5)
+    def stop(self):
+        self._running = False
 
-        self.search_entry = ttk.Entry(search_frame)
-        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
 
-        search_button = ttk.Button(search_frame, text="Search", command=self.search)
-        search_button.pack(side=tk.LEFT, padx=5)
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Settings")
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Settings placeholder"))
+        self.setLayout(layout)
 
-        # Results table
-        results_frame = ttk.Frame(content_frame)
-        results_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("BTSeedAggregator")
+        self.setGeometry(100, 100, 1024, 768)
+        self.db_file = "seeds.db"
+        self.conn = create_connection(self.db_file)
 
-        self.results_tree = ttk.Treeview(results_frame, columns=('Name', 'Size', 'Files'), show='headings')
-        self.results_tree.heading('Name', text='Name')
-        self.results_tree.heading('Size', text='Size')
-        self.results_tree.bind('<Button-3>', self.show_context_menu)
-        self.results_tree.heading('Files', text='Files')
-        self.results_tree.pack(fill=tk.BOTH, expand=True)
+        self._create_menu_bar()
 
-        # Bottom panel
-        bottom_panel = ttk.Frame(main_frame, height=100)
-        bottom_panel.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QHBoxLayout(central_widget)
 
-        # Log frame
-        log_frame = ttk.Frame(bottom_panel)
-        log_frame.pack(fill=tk.BOTH, expand=True)
+        left_sidebar = QWidget()
+        left_sidebar.setFixedWidth(150)
+        sidebar_layout = QVBoxLayout(left_sidebar)
+        sidebar_layout.addWidget(QTextEdit("Filters (placeholder)"))
 
-        log_label = ttk.Label(log_frame, text="Log:")
-        log_label.pack(anchor=tk.W)
+        right_content = QSplitter(Qt.Vertical)
+        self.torrent_table = QTableWidget()
+        self.torrent_table.setColumnCount(4)
+        self.torrent_table.setHorizontalHeaderLabels(["Name", "Size", "Files", "Info Hash"])
+        self.torrent_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.torrent_table.customContextMenuRequested.connect(self.open_context_menu)
+        right_content.addWidget(self.torrent_table)
 
-        self.log_widget = scrolledtext.ScrolledText(log_frame, height=5)
-        self.log_widget.pack(fill=tk.BOTH, expand=True)
+        self.log_panel = QTextEdit()
+        self.log_panel.setReadOnly(True)
+        right_content.addWidget(self.log_panel)
+        right_content.setSizes([500, 200])
 
-        # Buttons are now in the menu
+        main_layout.addWidget(left_sidebar)
+        main_layout.addWidget(right_content)
 
-    def create_menu(self):
-        menubar = tk.Menu(self.root)
-        self.root.config(menu=menubar)
-
-        file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Exit", command=self.root.quit)
-
-        tools_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
-        tools_menu.add_command(label="Start Crawler", command=self.start_crawler)
-        tools_menu.add_command(label="Stop Crawler", command=self.stop_crawler)
-        tools_menu.add_separator()
-        tools_menu.add_command(label="Settings", command=self.open_settings)
-
-        help_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="About", command=self.open_about)
-
-    def open_settings(self):
-        pass
-
-    def open_about(self):
-        pass
+        QTimer.singleShot(5000, self.start_crawler)
 
     def start_crawler(self):
-        self.log_widget.insert(tk.END, "Starting crawler...\n")
-        self.crawler = Crawler('seeds.db')
-        self.crawler_thread = threading.Thread(target=self.crawler.run)
+        self.crawler_thread = QThread()
+        self.crawler_worker = CrawlerWorker(self.db_file)
+        self.crawler_worker.moveToThread(self.crawler_thread)
+        self.crawler_thread.started.connect(self.crawler_worker.run)
+        self.crawler_worker.new_torrent.connect(self.add_torrent_to_table)
+        self.crawler_worker.log_message.connect(self.update_log)
         self.crawler_thread.start()
 
-    def stop_crawler(self):
-        if self.crawler:
-            self.crawler.stop()
-        self.log_widget.insert(tk.END, "Crawler stopped.\n")
+    def add_torrent_to_table(self, name, size, files, info_hash):
+        row_position = self.torrent_table.rowCount()
+        self.torrent_table.insertRow(row_position)
+        self.torrent_table.setItem(row_position, 0, QTableWidgetItem(name))
+        self.torrent_table.setItem(row_position, 1, QTableWidgetItem(str(size)))
+        self.torrent_table.setItem(row_position, 2, QTableWidgetItem(str(files)))
+        self.torrent_table.setItem(row_position, 3, QTableWidgetItem(info_hash))
 
-    def show_context_menu(self, event):
-        item = self.results_tree.identify_row(event.y)
-        if item:
-            self.results_tree.selection_set(item)
-            context_menu = tk.Menu(self.root, tearoff=0)
-            context_menu.add_command(label="Find Related", command=self.find_related)
-            context_menu.post(event.x_root, event.y_root)
+    def update_log(self, message):
+        self.log_panel.append(message)
 
-    def find_related(self):
-        selected_item = self.results_tree.selection()[0]
-        name = self.results_tree.item(selected_item)['values'][0]
-        self.search_entry.delete(0, tk.END)
-        self.search_entry.insert(0, name)
-        self.search()
+    def open_context_menu(self, position):
+        menu = QMenu()
+        find_related_action = menu.addAction("Find Related Seeds")
+        action = menu.exec(self.torrent_table.mapToGlobal(position))
+        if action == find_related_action:
+            selected_items = self.torrent_table.selectedItems()
+            if selected_items:
+                name = selected_items[0].text()
+                self.update_log(f"Finding related seeds for: {name}")
+                self.torrent_table.setRowCount(0) # Clear the table
+                results = search_seeds(self.conn, name)
+                for row in results:
+                    #  (id, info_hash, name, size, files)
+                    self.add_torrent_to_table(row[2], row[3], row[4], row[1])
 
-    def search(self):
-        query = self.search_entry.get()
-        conn = sqlite3.connect('seeds.db')
-        results = search_seeds(conn, query)
-        conn.close()
-        for i in self.results_tree.get_children():
-            self.results_tree.delete(i)
-        for result in results:
-            self.results_tree.insert('', 'end', values=(result[2], result[3], result[4]))
+    def _create_menu_bar(self):
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("File")
+        file_menu.addAction("Exit", self.close)
+        tools_menu = menu_bar.addMenu("Tools")
+        tools_menu.addAction("Settings", self.open_settings)
 
-def main():
-    create_database()
-    root = tk.Tk()
-    app = App(root)
-    root.after(5000, app.start_crawler)
-    root.mainloop()
+    def open_settings(self):
+        dialog = SettingsDialog(self)
+        dialog.exec()
 
-if __name__ == '__main__':
-    main()
+    def closeEvent(self, event):
+        if hasattr(self, 'crawler_worker'):
+            self.crawler_worker.stop()
+            self.crawler_thread.quit()
+            self.crawler_thread.wait()
+        event.accept()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())

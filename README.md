@@ -2,6 +2,12 @@
 
 BTSeedAggregator is a Python application for discovering and aggregating BT seeds from the BitTorrent DHT network. It is designed to be a lightweight, ad-free, and user-friendly alternative to other torrent clients.
 
+## Technology Stack
+
+*   **UI Framework:** Python with `PySide6` (the official Qt for Python bindings).
+*   **DHT Crawler:** `libtorrent`, a powerful and efficient C++ library with Python bindings.
+*   **Database:** SQLite for local storage of torrent metadata.
+
 ## Features
 
 ### Implemented
@@ -24,4 +30,4 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 
 ## Development Status
 
-This project is currently under development. The core components are in place, but the DHT crawler is not yet fully functional.
+This project is under active development. The core features, including DHT crawling, database storage, and the GUI, are implemented and functional. The application is now in a usable state for discovering and viewing torrents. Future work will focus on adding more advanced features and improving stability.
