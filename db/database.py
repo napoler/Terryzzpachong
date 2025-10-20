@@ -15,8 +15,7 @@ def create_database(db_file='seeds.db'):
     conn.commit()
     conn.close()
 
-def insert_seed(info_hash, name, size, files, db_file='seeds.db'):
-    conn = sqlite3.connect(db_file)
+def insert_seed(conn, info_hash, name, size, files):
     c = conn.cursor()
     try:
         c.execute("INSERT INTO seeds (info_hash, name, size, files) VALUES (?, ?, ?, ?)",
@@ -25,14 +24,11 @@ def insert_seed(info_hash, name, size, files, db_file='seeds.db'):
     except sqlite3.IntegrityError:
         # Info hash already exists
         pass
-    conn.close()
 
-def search_seeds(query, db_file='seeds.db'):
-    conn = sqlite3.connect(db_file)
+def search_seeds(conn, query):
     c = conn.cursor()
     c.execute("SELECT * FROM seeds WHERE name LIKE ?", ('%' + query + '%',))
     results = c.fetchall()
-    conn.close()
     return results
 
 if __name__ == '__main__':

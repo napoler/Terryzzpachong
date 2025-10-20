@@ -2,12 +2,8 @@ import tkinter as tk
 from tkinter import scrolledtext
 import threading
 import sys
-sys.path.append('crawler')
-sys.path.append('db')
-from dht_crawler import DHT
-from database import create_database, search_seeds
-import hashlib
-import struct
+from crawler import Crawler
+from db.database import create_database, search_seeds
 import sqlite3
 
 class App:
@@ -15,7 +11,7 @@ class App:
         self.root = root
         self.root.title("BTSeedAggregator")
         self.crawler_thread = None
-        self.dht = None
+        self.crawler = None
 
         # Search frame
         search_frame = tk.Frame(root)
@@ -61,29 +57,25 @@ class App:
         self.log_widget.insert(tk.END, "Starting crawler...\n")
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
-        self.crawler_thread = threading.Thread(target=self.run_crawler)
+        self.crawler = Crawler('seeds.db')
+        self.crawler_thread = threading.Thread(target=self.crawler.run)
         self.crawler_thread.start()
 
     def stop_crawler(self):
-        if self.dht:
-            self.dht._break = True
+        if self.crawler:
+            self.crawler.stop()
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
         self.log_widget.insert(tk.END, "Crawler stopped.\n")
 
-    def run_crawler(self):
-        conn = sqlite3.connect('seeds.db')
-        self.dht = DHT(port=54767, version=b"XN\00\00", d=hashlib.sha1(b"This is a test !").digest(), db_file='seeds.db', log_callback=lambda s: self.log_widget.insert(tk.END, s + "\n"))
-        self.dht.ping("".join(map(lambda x: chr(int(x)), "67.215.242.139".split("."))), struct.pack(">H", 6881))
-        self.dht._network_thread()
-        conn.close()
-
     def search(self):
         query = self.search_entry.get()
-        results = search_seeds(query)
+        conn = sqlite3.connect('seeds.db')
+        results = search_seeds(conn, query)
+        conn.close()
         self.results_listbox.delete(0, tk.END)
         for result in results:
-            self.results_listbox.insert(tk.END, f"{result[2]} ({result[3]} bytes)")
+            self.results_listbox.insert(tk.END, f"{result[1]}")
 
 def main():
     create_database()

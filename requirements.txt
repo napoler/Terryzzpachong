@@ -1,1 +1,1 @@
-# No external dependencies are required to run this application.
+libtorrent==2.0.11
