@@ -1,6 +1,9 @@
 # Miscellaneous
+.idea/
+*.iml
 *.class
 *.lock
+seeds.db
 *.log
 *.pyc
 *.swp
