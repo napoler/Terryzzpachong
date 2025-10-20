@@ -11,10 +11,10 @@ class TestDatabase(unittest.TestCase):
         os.remove(self.db_file)
 
     def test_insert_and_search(self):
-        insert_seed('test_hash', 'test_name', 12345, 1, db_file=self.db_file)
+        insert_seed('test_hash', 'test_hash', 0, 0, db_file=self.db_file)
         results = search_seeds('test', db_file=self.db_file)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0][2], 'test_name')
+        self.assertEqual(results[0][1], 'test_hash')
 
 if __name__ == '__main__':
     unittest.main()

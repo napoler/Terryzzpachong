@@ -14,13 +14,18 @@ import hashlib
 import random
 import os
 import socket
+import tkinter as tk
 
 from bencode import bencode, bdecode
+from db.database import insert_seed
 
 
 # Write to console, to be replaced with a logger maybe
-def w2c(s):
-  print(s)
+def w2c(s, log_callback=None):
+  if log_callback:
+    log_callback(s)
+  else:
+    print(s)
 
 
 # Convert an ip and port from ascii chars to proper strings :
@@ -54,7 +59,7 @@ class Node(object):
     return ".".join(map(lambda x: str(ord(x)), self._ip))
 
   def get_sid(self):
-    return self._id.encode("hex")
+    return self._id.hex()
 
   def get_sport(self):
     return struct.unpack(">H", self._p)[0]
@@ -101,10 +106,11 @@ class DHT():
 #
 #   For now, this node is not capable of handling different requests.
 #
-  def __init__(self, version, port, d, db_conn=None):
+  def __init__(self, version, port, d, db_file=None, log_callback=None):
     self._id = d
     self._version = version
-    self._db_conn = db_conn
+    self._db_file = db_file
+    self._log_callback = log_callback
     self._rt = StupidTable()
     self._break = False
     self._q = queue.Queue()
@@ -132,22 +138,22 @@ class DHT():
     rand_target = os.urandom(20)
     n = self._rt.get_random_node()
     t = self.set_up_new_transaction()
-    req = { "t" : t, "y" : b"q", "q" : b"find_node", "a" : { "id" : self._id, "target" : rand_target }}
+    req = {b"t": t, b"y": b"q", b"q": b"find_node", b"a": {b"id": self._id, b"target": rand_target}}
     self._q.put([req, (n._ip, n._p)])
     self._transactions[t].append(self.find_random_handler)
     self._transactions[t].append(n._ip)
     self._transactions[t].append(n._p)
-    w2c("Node " + str(n) + " is queried a find_node request for target " + rand_target.encode("hex"))
+    w2c(f"Node {n} is queried a find_node request for target {rand_target.hex()}", self._log_callback)
   #
   #
   def find_random_handler(self, req):
-    w2c("Find_node query answered")
-    n = req["r"]["nodes"]
-    i = 0
-    # Let's extract the nodes by pinging them
-    while len(n) - i >= 26:
-      self.ping(n[i+20:i+24], n[i+24:i+26])
-      i += 26
+    w2c("Find_node query answered", self._log_callback)
+    nodes = req[b"r"][b"nodes"]
+    for i in range(0, len(nodes), 26):
+        node_id = nodes[i:i+20]
+        ip = nodes[i+20:i+24]
+        port = nodes[i+24:i+26]
+        self.get_peers(ip, port, os.urandom(20))
   #
   #
   # ---------------------------------------------------------------
@@ -166,57 +172,68 @@ class DHT():
   #
   def ping(self, ip, port):
     t = self.set_up_new_transaction()
-    req = {"t" : t, "y" : b"q", "q" : b"ping", "a" : { "id" : self._id }}
+    req = {b"t": t, b"y": b"q", b"q": b"ping", b"a": {b"id": self._id}}
     self._q.put([req, (ip, port)])
     self._transactions[t].append(self.ping_handler)
     self._transactions[t].append(ip)
     self._transactions[t].append(port)
     # req1 will be added at the time of sending
-    w2c("Sending out ping to : " + str(addr_to_string((ip, port))))
+    w2c("Sending out ping to : " + str(addr_to_string((ip, port))), self._log_callback)
   #
   #
   #
   # The ping_handler adds the now validated node to
   # the routing list.
+  def get_peers(self, ip, port, info_hash):
+    t = self.set_up_new_transaction()
+    req = {b"t": t, b"y": b"q", b"q": b"get_peers", b"a": {b"id": self._id, b"info_hash": info_hash}}
+    self._q.put([req, (ip, port)])
+    self._transactions[t].append(self.get_peers_response_handler)
+    self._transactions[t].append(ip)
+    self._transactions[t].append(port)
+
+  def get_peers_response_handler(self, resp):
+      pass
+
   def ping_handler(self, resp):
-    ip = self._transactions[resp["t"]][1]
-    port = self._transactions[resp["t"]][2]
-    d = resp["r"]["id"]
-    if "v" in resp:
-      n = Node(ip, d, port, resp["v"])
+    ip = self._transactions[resp[b"t"]][1]
+    port = self._transactions[resp[b"t"]][2]
+    d = resp[b"r"][b"id"]
+    if b"v" in resp:
+      n = Node(ip, d, port, resp[b"v"])
     else:
       n = Node(ip, d, port)
-    self._rt.add_node(d.encode("hex"), n)
-    w2c(str(n) + " answered the ping !")
+    self._rt.add_node(d.hex(), n)
+    w2c(str(n) + " answered the ping !", self._log_callback)
     self.find_random()
   #
   # ---------------------------------------------------------------
 
   def get_peers_handler(self, req, addr):
-    # Dummy response for now
-    tid = req["t"]
-    info_hash = req["a"]["info_hash"]
-    resp = {"t": tid, "y": b"r", "r": {"id": self._id, "token": b"dummy", "nodes": b""}}
+    tid = req[b"t"]
+    info_hash = req[b"a"][b"info_hash"]
+    # TODO: Find nodes near the info_hash and return them.
+    # For now, just send a dummy response.
+    resp = {b"t": tid, b"y": b"r", b"r": {b"id": self._id, b"token": b"dummy", b"nodes": b""}}
     self._sock.sendto(bencode(resp), addr)
+
 
   def announce_peer_handler(self, req, addr):
-    # Dummy response for now
-    tid = req["t"]
-    info_hash = req["a"]["info_hash"]
-    if self._db_conn:
-        c = self._db_conn.cursor()
-        c.execute("INSERT OR IGNORE INTO seeds (info_hash) VALUES (?)", (info_hash.hex(),))
-        self._db_conn.commit()
-    resp = {"t": tid, "y": b"r", "r": {"id": self._id}}
-    self._sock.sendto(bencode(resp), addr)
+      info_hash = req[b"a"][b"info_hash"]
+      if self._db_file:
+          insert_seed(info_hash.hex(), info_hash.hex(), 0, 0, db_file=self._db_file)
+          w2c(f"Announce from {addr}: {info_hash.hex()}", self._log_callback)
 
-  def _network_thread(self, iterations=10):
+      # Send a response to the announcer.
+      tid = req[b"t"]
+      resp = {b"t": tid, b"y": b"r", b"r": {b"id": self._id}}
+      self._sock.sendto(bencode(resp), addr)
+
+  def _network_thread(self):
     # The main I/O function, used by the thread
-    it =  iterations
-    while (not self._break) and it > 0:
-      w2c("\n----- iterations left " + str(it) + " -----")
-      w2c("      KNOWN NODES : " + str(len(self._rt)))
-      it -= 1
+    while not self._break:
+      w2c(f"\n----- Running Crawler -----", self._log_callback)
+      w2c(f"      KNOWN NODES : {len(self._rt)}", self._log_callback)
 
       if len(self._rt) > 0:
           self.find_random()
@@ -226,41 +243,37 @@ class DHT():
       if (not self._q.empty()):
         data, addr = self._q.get()
         addr = addr_to_string(addr)
-        t = data["t"]
+        t = data[b"t"]
         self._transactions[t].append(data)
-        w2c("Sending : " + str(data) + " to " + str(addr))
+        w2c(f"Sending : {data} to {addr}", self._log_callback)
         self._sock.sendto(bencode(data), addr)
 
       # Then receive :
       try:
         req, c = self._sock.recvfrom(4096)
+        w2c(f"Incoming message from {c}: {req}")
         req = bdecode(req)
-        #w2c("Incoming message : " + str(req) + " from " + str(c))
-        if req["y"] == "r":
-          # Response
-          # If it is a valid transaction ID, call the handler and store :
-          if req["t"] in self._transactions.keys():
-            self._transactions[req["t"]].append(req)
-            self._transactions[req["t"]][0](req)
-        elif req["y"] == "q":
-          # Query
-          if req["q"] == "get_peers":
-            self.get_peers_handler(req, c)
-          elif req["q"] == "announce_peer":
-            self.announce_peer_handler(req, c)
-          break
-        elif req["y"] == "e":
+        if req[b"y"] == b"r":
+            if req[b"t"] in self._transactions:
+                self._transactions[req[b"t"]].append(req)
+                self._transactions[req[b"t"]][0](req)
+        elif req[b"y"] == b"q":
+            if req[b"q"] == b"get_peers":
+                self.get_peers_handler(req, c)
+            elif req[b"q"] == b"announce_peer":
+                self.announce_peer_handler(req, c)
+        elif req[b"y"] == b"e":
           # Error
           break
         else:
           raise RuntimeError("Unknown KRPC message : " + str(req["y"]))
       except socket.timeout:
-        pass
+        time.sleep(0.1)
 
 
 
 
 if __name__ == "__main__":
-  d = DHT(port=54767, version="XN\00\00".encode('utf-8'), d=hashlib.sha1("This is a test !".encode('utf-8')).digest())
+  d = DHT(port=54767, version=b"XN\00\00", d=hashlib.sha1(b"This is a test !").digest())
   d.ping("".join(map(lambda x: chr(int(x)), "67.215.242.139".split("."))), struct.pack(">H", 6881))
   d._network_thread(iterations=5)
