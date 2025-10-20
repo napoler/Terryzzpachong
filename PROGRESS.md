@@ -3,10 +3,13 @@
 ## Completed
 
 *   Set up the Python project structure.
-*   Implemented the core DHT crawler.
+*   Implemented the core DHT crawler using `libtorrent`.
 *   Created the SQLite database.
-*   Developed a command-line interface.
-*   Developed a graphical user interface.
+*   Developed a graphical user interface using `tkinter` and `ttk`.
+*   Added a main menu bar and a settings page.
+*   Implemented a 5-second delayed start for the crawler.
+*   Redesigned the UI to mimic qBittorrent.
+*   Implemented a related seed discovery feature.
 *   Created the initial documentation.
 
 ## Planned
