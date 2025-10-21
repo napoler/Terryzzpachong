@@ -36,7 +36,7 @@ def settings():
     return render_template('settings.html', bootstrap_nodes=nodes_text, crawler_status=crawler_running)
 
 @app.route('/start_crawler')
-def start_crawler():
+def start_crawler_route():
     global crawler_running
     if not crawler_running:
         crawler_running = True
@@ -136,6 +136,12 @@ def crawler_thread():
         except Exception as e:
             socketio.emit('log_message', {'data': f"Crawler error: {e}"})
 
+def start_crawler_background():
+    global crawler_running
+    if not crawler_running:
+        crawler_running = True
+        socketio.start_background_task(target=crawler_thread)
+
 if __name__ == '__main__':
-    start_crawler() # Start crawler by default
+    start_crawler_background() # Start crawler by default
     socketio.run(app, host='0.0.0.0', port=5000)
