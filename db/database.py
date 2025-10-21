@@ -44,3 +44,21 @@ def search_seeds(conn, query):
     cur.execute("SELECT * FROM seeds WHERE name LIKE ?", ('%' + query + '%',))
     rows = cur.fetchall()
     return rows
+
+def get_torrent_by_hash(conn, info_hash):
+    """
+    Query a torrent by its info_hash
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM seeds WHERE info_hash=?", (info_hash,))
+    rows = cur.fetchall()
+    return rows
+
+def get_latest_torrents(conn, limit=50):
+    """
+    Query the latest torrents
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM seeds ORDER BY id DESC LIMIT ?", (limit,))
+    rows = cur.fetchall()
+    return rows

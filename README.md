@@ -17,8 +17,10 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 *   **SQLite Database:** A local SQLite database to store and manage discovered torrents.
 *   **Web User Interface:** A user-friendly web UI to interact with the application.
 *   **Related Seed Discovery:** A feature to find seeds related to a selected torrent.
-*   **Delayed Crawler Start:** The crawler starts automatically 5 seconds after the application starts.
 *   **Real-time Updates:** The web UI is updated in real-time with new torrents and log messages.
+*   **Crawler Control:** Start and stop the crawler from the settings page.
+*   **Configurable Bootstrap Nodes:** Set your own initial DHT bootstrap nodes.
+*   **Public API:** A JSON API for accessing torrent data programmatically.
 
 ### Planned
 

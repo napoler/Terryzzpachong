@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings - BTSeedAggregator</title>
+    <style>
+        body { font-family: sans-serif; }
+        textarea { width: 100%; height: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Settings</h1>
+    <h2>Crawler Control</h2>
+    <p>Crawler Status: {{ "Running" if crawler_status else "Stopped" }}</p>
+    <a href="{{ url_for('start_crawler') }}"><button>Start Crawler</button></a>
+    <a href="{{ url_for('stop_crawler') }}"><button>Stop Crawler</button></a>
+
+    <h2>Bootstrap Nodes</h2>
+    <form method="post">
+        <label for="bootstrap_nodes">Bootstrap Nodes (one per line):</label><br>
+        <textarea id="bootstrap_nodes" name="bootstrap_nodes">{{ bootstrap_nodes }}</textarea><br><br>
+        <input type="submit" value="Save Settings">
+    </form>
+    <p><a href="{{ url_for('index') }}">Back to Main Page</a></p>
+</body>
+</html>
