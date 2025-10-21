@@ -24,16 +24,30 @@ def index():
 def settings():
     global crawler_running
     if request.method == 'POST':
-        nodes_text = request.form.get('bootstrap_nodes')
-        nodes_list = [node.strip() for node in nodes_text.splitlines() if node.strip()]
         config = load_config()
-        config['bootstrap_nodes'] = nodes_list
+
+        nodes_text = request.form.get('bootstrap_nodes')
+        config['bootstrap_nodes'] = [node.strip() for node in nodes_text.splitlines() if node.strip()]
+
+        trackers_text = request.form.get('trackers')
+        config['trackers'] = [tracker.strip() for tracker in trackers_text.splitlines() if tracker.strip()]
+
+        torrents_text = request.form.get('startup_torrents')
+        config['startup_torrents'] = [torrent.strip() for torrent in torrents_text.splitlines() if torrent.strip()]
+
         save_config(config)
         return redirect(url_for('settings'))
 
     config = load_config()
     nodes_text = "\n".join(config.get('bootstrap_nodes', []))
-    return render_template('settings.html', bootstrap_nodes=nodes_text, crawler_status=crawler_running)
+    trackers_text = "\n".join(config.get('trackers', []))
+    torrents_text = "\n".join(config.get('startup_torrents', []))
+
+    return render_template('settings.html',
+                           bootstrap_nodes=nodes_text,
+                           trackers=trackers_text,
+                           startup_torrents=torrents_text,
+                           crawler_status=crawler_running)
 
 @app.route('/start_crawler')
 def start_crawler_route():
@@ -105,7 +119,7 @@ def crawler_thread():
     conn = create_connection(db_file)
     create_table(conn)
     config = load_config()
-    crawler_instance = Crawler(conn, bootstrap_nodes=config['bootstrap_nodes'])
+    crawler_instance = Crawler(conn, bootstrap_nodes=config['bootstrap_nodes'], trackers=config['trackers'], startup_torrents=config['startup_torrents'])
     while crawler_running:
         try:
             alerts = crawler_instance.session.pop_alerts()

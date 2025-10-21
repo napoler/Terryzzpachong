@@ -20,11 +20,13 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 *   **Real-time Updates:** The web UI is updated in real-time with new torrents and log messages.
 *   **Crawler Control:** Start and stop the crawler from the settings page.
 *   **Configurable Bootstrap Nodes:** Set your own initial DHT bootstrap nodes.
+*   **Configurable Trackers:** Provide a list of public trackers to aid in peer discovery.
+*   **Startup Torrents:** Provide a list of info-hashes to kickstart the crawling process.
 *   **Public API:** A JSON API for accessing torrent data programmatically.
 
 ### Planned
 
-*   **Tracker and PEX Crawling:** Add support for tracker and PEX crawling to discover more seeds.
+*   **PEX Crawling:** Add support for the Peer Exchange Protocol (PEX) to discover more seeds.
 *   **Advanced Filtering:** Add a sidebar for filtering results by category, size, etc.
 *   **Detailed Torrent Information:** Add a bottom panel to show detailed information about the selected torrent.
 *   **More Comprehensive Tests:** Add more comprehensive tests to ensure the application is stable and correct.

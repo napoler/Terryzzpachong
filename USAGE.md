@@ -26,6 +26,14 @@ On the settings page, you can see the current status of the crawler and start or
 
 You can also specify a custom list of initial DHT bootstrap nodes. Enter one node per line in the format `hostname:port`.
 
+### Custom Trackers
+
+To help the crawler discover peers more quickly, you can provide a list of public tracker URLs. Enter one URL per line in the format `hostname:port`.
+
+### Startup Torrents
+
+You can also provide a list of info-hashes for popular torrents. The crawler will use these to immediately start finding peers, which will rapidly populate the DHT. Enter one info-hash per line.
+
 ## Finding Related Seeds
 
 To find seeds related to a torrent in the list, click the "Find Related" button. This will perform a new search using the name of the selected torrent as the query and display the results in the torrent table.
@@ -39,7 +47,7 @@ The application provides a JSON API for programmatic access to the torrent data.
 *   **URL:** `/api/torrent/<info_hash>`
 *   **Method:** `GET`
 *   **Description:** Retrieves the details of a single torrent.
-*   **Example:** `curl http://127.0.0.1:5000/api/torrent/YOUR_INFO_HASH`
+*   **Example:** `curl http://12civil.pyg/api/torrent/YOUR_INFO_HASH`
 
 ### Search Torrents
 

@@ -5,7 +5,7 @@
     <title>Settings - BTSeedAggregator</title>
     <style>
         body { font-family: sans-serif; }
-        textarea { width: 100%; height: 200px; }
+        textarea { width: 100%; height: 150px; }
     </style>
 </head>
 <body>
@@ -15,10 +15,19 @@
     <a href="{{ url_for('start_crawler_route') }}"><button>Start Crawler</button></a>
     <a href="{{ url_for('stop_crawler') }}"><button>Stop Crawler</button></a>
 
-    <h2>Bootstrap Nodes</h2>
     <form method="post">
+        <h2>Bootstrap Nodes</h2>
         <label for="bootstrap_nodes">Bootstrap Nodes (one per line):</label><br>
         <textarea id="bootstrap_nodes" name="bootstrap_nodes">{{ bootstrap_nodes }}</textarea><br><br>
+
+        <h2>Trackers</h2>
+        <label for="trackers">Tracker URLs (one per line):</label><br>
+        <textarea id="trackers" name="trackers">{{ trackers }}</textarea><br><br>
+
+        <h2>Startup Torrents</h2>
+        <label for="startup_torrents">Info Hashes (one per line):</label><br>
+        <textarea id="startup_torrents" name="startup_torrents">{{ startup_torrents }}</textarea><br><br>
+
         <input type="submit" value="Save Settings">
     </form>
     <p><a href="{{ url_for('index') }}">Back to Main Page</a></p>
