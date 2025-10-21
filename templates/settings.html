@@ -12,7 +12,7 @@
     <h1>Settings</h1>
     <h2>Crawler Control</h2>
     <p>Crawler Status: {{ "Running" if crawler_status else "Stopped" }}</p>
-    <a href="{{ url_for('start_crawler') }}"><button>Start Crawler</button></a>
+    <a href="{{ url_for('start_crawler_route') }}"><button>Start Crawler</button></a>
     <a href="{{ url_for('stop_crawler') }}"><button>Stop Crawler</button></a>
 
     <h2>Bootstrap Nodes</h2>
