@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>API Help - BTSeedAggregator</title>
+    <style>
+        body { font-family: sans-serif; }
+        pre { background-color: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>API Help</h1>
+    <p>The application provides a JSON API for programmatic access to the torrent data.</p>
+
+    <h2>Get Torrent by Info Hash</h2>
+    <ul>
+        <li><strong>URL:</strong> <code>/api/torrent/&lt;info_hash&gt;</code></li>
+        <li><strong>Method:</strong> <code>GET</code></li>
+        <li><strong>Description:</strong> Retrieves the details of a single torrent.</li>
+        <li><strong>Example:</strong> <code>curl http://127.0.0.1:5000/api/torrent/YOUR_INFO_HASH</code></li>
+    </ul>
+
+    <h2>Search Torrents</h2>
+    <ul>
+        <li><strong>URL:</strong> <code>/api/search/&lt;query&gt;</code></li>
+        <li><strong>Method:</strong> <code>GET</code></li>
+        <li><strong>Description:</strong> Searches for torrents matching the query.</li>
+        <li><strong>Example:</strong> <code>curl http://127.0.0.1:5000/api/search/ubuntu</code></li>
+    </ul>
+
+    <h2>Get Latest Torrents</h2>
+    <ul>
+        <li><strong>URL:</strong> <code>/api/latest</code></li>
+        <li><strong>Method:</strong> <code>GET</code></li>
+        <li><strong>Description:</strong> Retrieves a list of the 50 most recently discovered torrents.</li>
+        <li><strong>Example:</strong> <code>curl http://127.0.0.1:5000/api/latest</code></li>
+    </ul>
+
+    <p><a href="{{ url_for('index') }}">Back to Main Page</a></p>
+</body>
+</html>

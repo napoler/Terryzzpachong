@@ -9,11 +9,29 @@
         #torrents_table th, #torrents_table td { border: 1px solid #ddd; padding: 8px; }
         #torrents_table th { background-color: #f2f2f2; }
         #log { height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 5px; }
+        .search-controls { margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <h1>BTSeedAggregator</h1>
-    <p><a href="{{ url_for('settings') }}">Settings</a></p>
+    <p><a href="{{ url_for('settings') }}">Settings</a> | <a href="{{ url_for('api_help') }}">API Help</a></p>
+
+    <div class="search-controls">
+        <input type="text" id="search_query" placeholder="Search...">
+        <input type="number" id="min_size" placeholder="Min size (bytes)">
+        <input type="number" id="max_size" placeholder="Max size (bytes)">
+        <select id="sort_by">
+            <option value="name">Name</option>
+            <option value="size">Size</option>
+            <option value="files">Files</option>
+        </select>
+        <select id="sort_order">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+        </select>
+        <button onclick="search()">Search</button>
+    </div>
+
     <table id="torrents_table">
         <thead>
             <tr>
@@ -42,7 +60,7 @@
                     <td>${data.size}</td>
                     <td>${data.files}</td>
                     <td>${data.info_hash}</td>
-                    <td><button onclick="findRelated('${data.name}')">Find Related</button></td>
+                    <td><button onclick="search('${data.name}')">Find Related</button></td>
                 `;
             });
 
@@ -54,8 +72,20 @@
                 document.querySelector("#torrents_table tbody").innerHTML = "";
             });
 
-            window.findRelated = function(name) {
-                socket.emit('find_related', {name: name});
+            window.search = function(query) {
+                var search_query = query || document.getElementById('search_query').value;
+                var min_size = document.getElementById('min_size').value;
+                var max_size = document.getElementById('max_size').value;
+                var sort_by = document.getElementById('sort_by').value;
+                var sort_order = document.getElementById('sort_order').value;
+
+                socket.emit('search', {
+                    query: search_query,
+                    min_size: min_size,
+                    max_size: max_size,
+                    sort_by: sort_by,
+                    sort_order: sort_order
+                });
             }
         });
     </script>

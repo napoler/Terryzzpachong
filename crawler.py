@@ -8,6 +8,7 @@ class Crawler:
         settings = {
             'dht_bootstrap_nodes': ",".join(bootstrap_nodes),
             'listen_interfaces': '0.0.0.0:6881',
+            'enable_pex': True
         }
         self.session = lt.session(settings)
 

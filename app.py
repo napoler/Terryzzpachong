@@ -7,7 +7,7 @@ import threading
 import time
 import libtorrent as lt
 from crawler import Crawler
-from db.database import create_connection, create_table, search_seeds, insert_seed, get_torrent_by_hash, get_latest_torrents
+from db.database import create_connection, create_table, search_seeds, insert_seed, get_torrent_by_hash, get_latest_torrents, clear_database
 from config import load_config, save_config
 from logger import setup_logger
 
@@ -79,7 +79,20 @@ def stop_crawler():
         log.info("Crawler is not running.")
     return redirect(url_for('settings'))
 
+@app.route('/clear_database')
+def clear_database_route():
+    log.info("Clearing database.")
+    conn = create_connection(db_file)
+    clear_database(conn)
+    conn.close()
+    socketio.emit('clear_torrents')
+    return redirect(url_for('settings'))
+
 # API Endpoints
+@app.route('/api/help')
+def api_help():
+    return render_template('api_help.html')
+
 @app.route('/api/torrent/<info_hash>')
 def api_get_torrent(info_hash):
     log.info(f"API request for torrent: {info_hash}")
@@ -122,13 +135,18 @@ def handle_connect():
         socketio.emit('new_torrent', {'name': row[2], 'size': row[3], 'files': row[4], 'info_hash': row[1]})
 
 
-@socketio.on('find_related')
-def handle_find_related(data):
-    name = data['name']
-    log.info(f"Finding related seeds for: {name}")
+@socketio.on('search')
+def handle_search(data):
+    query = data.get('query', '')
+    min_size = data.get('min_size')
+    max_size = data.get('max_size')
+    sort_by = data.get('sort_by', 'name')
+    sort_order = data.get('sort_order', 'asc')
+
+    log.info(f"Searching for: {query}, min_size: {min_size}, max_size: {max_size}, sort_by: {sort_by}, sort_order: {sort_order}")
     socketio.emit('clear_torrents')
     conn = create_connection(db_file)
-    results = search_seeds(conn, name)
+    results = search_seeds(conn, query, min_size, max_size, sort_by, sort_order)
     conn.close()
     for row in results:
         socketio.emit('new_torrent', {'name': row[2], 'size': row[3], 'files': row[4], 'info_hash': row[1]})
@@ -140,6 +158,9 @@ def crawler_thread():
     create_table(conn)
     config = load_config()
     crawler_instance = Crawler(conn, bootstrap_nodes=config['bootstrap_nodes'], trackers=config['trackers'], startup_torrents=config['startup_torrents'])
+
+    last_status_log_time = time.time()
+
     while crawler_running:
         try:
             alerts = crawler_instance.session.pop_alerts()
@@ -167,6 +188,14 @@ def crawler_thread():
                     log.info(f"Discovered new torrent: {name}")
                     insert_seed(conn, info_hash_str, name, size, files)
                     socketio.emit('new_torrent', {'name': name, 'size': size, 'files': files, 'info_hash': info_hash_str})
+
+            # Log status every 10 seconds
+            current_time = time.time()
+            if current_time - last_status_log_time > 10:
+                s = crawler_instance.session.status()
+                log.info(f"DHT nodes: {s.dht_nodes} | Torrents: {s.num_torrents}")
+                last_status_log_time = current_time
+
             socketio.sleep(1) # Use socketio.sleep for eventlet
         except Exception as e:
             log.error(f"Crawler error: {e}", exc_info=True)

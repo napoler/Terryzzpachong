@@ -15,6 +15,9 @@
     <a href="{{ url_for('start_crawler_route') }}"><button>Start Crawler</button></a>
     <a href="{{ url_for('stop_crawler') }}"><button>Stop Crawler</button></a>
 
+    <h2>Database</h2>
+    <a href="{{ url_for('clear_database_route') }}"><button>Clear Database</button></a>
+
     <form method="post">
         <h2>Bootstrap Nodes</h2>
         <label for="bootstrap_nodes">Bootstrap Nodes (one per line):</label><br>
