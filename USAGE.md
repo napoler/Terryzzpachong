@@ -37,6 +37,16 @@ On the settings page, you can see the current status of the crawler and start or
 
 You can also clear all torrents from the database by clicking the "Clear Database" button.
 
+### Proxy Settings
+
+You can configure a proxy for the crawler. The following settings are available:
+
+*   **Proxy Type:** Select the type of proxy (None, SOCKS5, or HTTP).
+*   **Hostname:** The hostname or IP address of the proxy server.
+*   **Port:** The port of the proxy server.
+*   **Username:** The username for authentication (optional).
+*   **Password:** The password for authentication (optional).
+
 ### Custom Bootstrap Nodes
 
 You can also specify a custom list of initial DHT bootstrap nodes. Enter one node per line in the format `hostname:port`.

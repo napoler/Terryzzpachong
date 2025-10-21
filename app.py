@@ -39,6 +39,12 @@ def settings():
         torrents_text = request.form.get('startup_torrents')
         config['startup_torrents'] = [torrent.strip() for torrent in torrents_text.splitlines() if torrent.strip()]
 
+        config['proxy']['hostname'] = request.form.get('proxy_hostname')
+        config['proxy']['port'] = request.form.get('proxy_port')
+        config['proxy']['username'] = request.form.get('proxy_username')
+        config['proxy']['password'] = request.form.get('proxy_password')
+        config['proxy']['type'] = request.form.get('proxy_type')
+
         save_config(config)
         return redirect(url_for('settings'))
 
@@ -52,6 +58,7 @@ def settings():
                            bootstrap_nodes=nodes_text,
                            trackers=trackers_text,
                            startup_torrents=torrents_text,
+                           proxy=config.get('proxy'),
                            crawler_status=crawler_running)
 
 @app.route('/start_crawler')
@@ -157,7 +164,7 @@ def crawler_thread():
     conn = create_connection(db_file)
     create_table(conn)
     config = load_config()
-    crawler_instance = Crawler(conn, bootstrap_nodes=config['bootstrap_nodes'], trackers=config['trackers'], startup_torrents=config['startup_torrents'])
+    crawler_instance = Crawler(conn, config)
 
     last_status_log_time = time.time()
 

@@ -7,7 +7,14 @@ DEFAULT_CONFIG = {
         "router.utorrent.com:6881"
     ],
     "trackers": [],
-    "startup_torrents": []
+    "startup_torrents": [],
+    "proxy": {
+        "hostname": "",
+        "port": "",
+        "username": "",
+        "password": "",
+        "type": "none"
+    }
 }
 
 def load_config():
@@ -20,7 +27,11 @@ def load_config():
 
     # Ensure all default keys are present
     config = DEFAULT_CONFIG.copy()
+    if 'proxy' in user_config:
+        config['proxy'].update(user_config['proxy'])
+        user_config.pop('proxy')
     config.update(user_config)
+
     return config
 
 def save_config(config):

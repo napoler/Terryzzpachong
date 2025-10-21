@@ -3,16 +3,31 @@ from urllib.parse import urlparse
 from logger import log
 
 class Crawler:
-    def __init__(self, conn, bootstrap_nodes, trackers, startup_torrents):
+    def __init__(self, conn, config):
         self.conn = conn
         settings = {
-            'dht_bootstrap_nodes': ",".join(bootstrap_nodes),
+            'dht_bootstrap_nodes': ",".join(config['bootstrap_nodes']),
             'listen_interfaces': '0.0.0.0:6881',
             'enable_pex': True
         }
+
+        proxy = config.get('proxy')
+        if proxy and proxy.get('hostname') and proxy.get('port'):
+            log.info(f"Using proxy: {proxy['hostname']}:{proxy['port']}")
+            proxy_settings = {
+                'proxy_hostname': proxy['hostname'],
+                'proxy_port': int(proxy['port']),
+                'proxy_type': 1 if proxy.get('type') == 'http' else 2 # 1=http, 2=socks5
+            }
+            if proxy.get('username'):
+                proxy_settings['proxy_username'] = proxy['username']
+            if proxy.get('password'):
+                proxy_settings['proxy_password'] = proxy['password']
+            settings.update(proxy_settings)
+
         self.session = lt.session(settings)
 
-        for tracker_url in trackers:
+        for tracker_url in config['trackers']:
             try:
                 parsed_url = urlparse(tracker_url)
                 hostname = parsed_url.hostname
@@ -24,7 +39,7 @@ class Crawler:
             except Exception as e:
                 log.error(f"Error parsing tracker URL {tracker_url}: {e}")
 
-        for info_hash in startup_torrents:
+        for info_hash in config['startup_torrents']:
             params = {
                 'save_path': '.',
                 'storage_mode': lt.storage_mode_t(2),
