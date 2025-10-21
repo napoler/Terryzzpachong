@@ -1,4 +1,6 @@
 import libtorrent as lt
+from urllib.parse import urlparse
+from logger import log
 
 class Crawler:
     def __init__(self, conn, bootstrap_nodes, trackers, startup_torrents):
@@ -9,8 +11,17 @@ class Crawler:
         }
         self.session = lt.session(settings)
 
-        for tracker in trackers:
-            self.session.add_dht_router(tracker.split(':')[0], int(tracker.split(':')[1]))
+        for tracker_url in trackers:
+            try:
+                parsed_url = urlparse(tracker_url)
+                hostname = parsed_url.hostname
+                port = parsed_url.port
+                if hostname and port:
+                    self.session.add_dht_router(hostname, port)
+                else:
+                    log.warning(f"Could not parse tracker URL: {tracker_url}")
+            except Exception as e:
+                log.error(f"Error parsing tracker URL {tracker_url}: {e}")
 
         for info_hash in startup_torrents:
             params = {

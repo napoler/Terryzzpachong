@@ -9,21 +9,25 @@ import libtorrent as lt
 from crawler import Crawler
 from db.database import create_connection, create_table, search_seeds, insert_seed, get_torrent_by_hash, get_latest_torrents
 from config import load_config, save_config
+from logger import setup_logger
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='eventlet')
+log = setup_logger(socketio)
 db_file = "seeds.db"
 crawler_instance = None
 crawler_running = False
 
 @app.route('/')
 def index():
+    log.info("Serving index page.")
     return render_template('index.html')
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     global crawler_running
     if request.method == 'POST':
+        log.info("Saving new settings.")
         config = load_config()
 
         nodes_text = request.form.get('bootstrap_nodes')
@@ -38,6 +42,7 @@ def settings():
         save_config(config)
         return redirect(url_for('settings'))
 
+    log.info("Serving settings page.")
     config = load_config()
     nodes_text = "\n".join(config.get('bootstrap_nodes', []))
     trackers_text = "\n".join(config.get('trackers', []))
@@ -52,33 +57,44 @@ def settings():
 @app.route('/start_crawler')
 def start_crawler_route():
     global crawler_running
+    log.info("Attempting to start crawler.")
     if not crawler_running:
         crawler_running = True
         socketio.start_background_task(target=crawler_thread)
+        log.info("Crawler started.")
+    else:
+        log.info("Crawler is already running.")
     return redirect(url_for('settings'))
 
 @app.route('/stop_crawler')
 def stop_crawler():
     global crawler_running, crawler_instance
+    log.info("Attempting to stop crawler.")
     if crawler_running:
         crawler_running = False
         if crawler_instance:
             crawler_instance.stop()
+        log.info("Crawler stopped.")
+    else:
+        log.info("Crawler is not running.")
     return redirect(url_for('settings'))
 
 # API Endpoints
 @app.route('/api/torrent/<info_hash>')
 def api_get_torrent(info_hash):
+    log.info(f"API request for torrent: {info_hash}")
     conn = create_connection(db_file)
     rows = get_torrent_by_hash(conn, info_hash)
     conn.close()
     if rows:
         row = rows[0]
         return jsonify({'id': row[0], 'info_hash': row[1], 'name': row[2], 'size': row[3], 'files': row[4]})
+    log.warning(f"API request for non-existent torrent: {info_hash}")
     return jsonify({'error': 'Torrent not found'}), 404
 
 @app.route('/api/search/<query>')
 def api_search_torrents(query):
+    log.info(f"API search request for: {query}")
     conn = create_connection(db_file)
     rows = search_seeds(conn, query)
     conn.close()
@@ -87,6 +103,7 @@ def api_search_torrents(query):
 
 @app.route('/api/latest')
 def api_latest_torrents():
+    log.info("API request for latest torrents.")
     conn = create_connection(db_file)
     rows = get_latest_torrents(conn)
     conn.close()
@@ -97,6 +114,7 @@ def api_latest_torrents():
 @socketio.on('connect')
 def handle_connect():
     """Sends existing torrents to a new client."""
+    log.info("Client connected to WebSocket.")
     conn = create_connection(db_file)
     results = search_seeds(conn, '') # Get all seeds
     conn.close()
@@ -107,6 +125,7 @@ def handle_connect():
 @socketio.on('find_related')
 def handle_find_related(data):
     name = data['name']
+    log.info(f"Finding related seeds for: {name}")
     socketio.emit('clear_torrents')
     conn = create_connection(db_file)
     results = search_seeds(conn, name)
@@ -116,6 +135,7 @@ def handle_find_related(data):
 
 def crawler_thread():
     global crawler_running, crawler_instance
+    log.info("Crawler thread starting.")
     conn = create_connection(db_file)
     create_table(conn)
     config = load_config()
@@ -144,11 +164,12 @@ def crawler_thread():
                     files = info.num_files()
                     name = info.name()
                     info_hash_str = str(info.info_hash())
+                    log.info(f"Discovered new torrent: {name}")
                     insert_seed(conn, info_hash_str, name, size, files)
                     socketio.emit('new_torrent', {'name': name, 'size': size, 'files': files, 'info_hash': info_hash_str})
             socketio.sleep(1) # Use socketio.sleep for eventlet
         except Exception as e:
-            socketio.emit('log_message', {'data': f"Crawler error: {e}"})
+            log.error(f"Crawler error: {e}", exc_info=True)
 
 def start_crawler_background():
     global crawler_running
@@ -157,5 +178,6 @@ def start_crawler_background():
         socketio.start_background_task(target=crawler_thread)
 
 if __name__ == '__main__':
+    log.info("Starting application.")
     start_crawler_background() # Start crawler by default
     socketio.run(app, host='0.0.0.0', port=5000)
