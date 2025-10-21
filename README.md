@@ -4,7 +4,8 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 
 ## Technology Stack
 
-*   **UI Framework:** Python with `PySide6` (the official Qt for Python bindings).
+*   **Web Framework:** Flask
+*   **Real-time Communication:** Flask-SocketIO
 *   **DHT Crawler:** `libtorrent`, a powerful and efficient C++ library with Python bindings.
 *   **Database:** SQLite for local storage of torrent metadata.
 
@@ -14,12 +15,10 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 
 *   **DHT Crawler:** A lightweight crawler that connects to the BitTorrent DHT network to discover new torrents.
 *   **SQLite Database:** A local SQLite database to store and manage discovered torrents.
-*   **Graphical User Interface:** A user-friendly GUI to interact with the application, inspired by qBittorrent.
+*   **Web User Interface:** A user-friendly web UI to interact with the application.
 *   **Related Seed Discovery:** A feature to find seeds related to a selected torrent.
-*   **DPI Scaling:** The application is DPI-aware to ensure it looks good on high-resolution displays.
 *   **Delayed Crawler Start:** The crawler starts automatically 5 seconds after the application starts.
-*   **Main Menu Bar:** A main menu bar with `File`, `Tools`, and `Help` menus.
-*   **Settings Page:** A placeholder settings page, accessible from the "Tools" menu.
+*   **Real-time Updates:** The web UI is updated in real-time with new torrents and log messages.
 
 ### Planned
 
@@ -30,4 +29,4 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 
 ## Development Status
 
-This project is under active development. The core features, including DHT crawling, database storage, and the GUI, are implemented and functional. The application is now in a usable state for discovering and viewing torrents. Future work will focus on adding more advanced features and improving stability.
+This project is under active development. The core features, including DHT crawling, database storage, and the web UI, are implemented and functional. The application is now in a usable state for discovering and viewing torrents. Future work will focus on adding more advanced features and improving stability.

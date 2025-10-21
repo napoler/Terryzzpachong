@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BTSeedAggregator</title>
+    <style>
+        body { font-family: sans-serif; }
+        #torrents_table, #log { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        #torrents_table th, #torrents_table td { border: 1px solid #ddd; padding: 8px; }
+        #torrents_table th { background-color: #f2f2f2; }
+        #log { height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>BTSeedAggregator</h1>
+    <table id="torrents_table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Files</th>
+                <th>Info Hash</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <h2>Log</h2>
+    <div id="log"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            socket.on('new_torrent', function(data) {
+                var table_body = document.querySelector("#torrents_table tbody");
+                var new_row = table_body.insertRow(0);
+                new_row.innerHTML = `
+                    <td>${data.name}</td>
+                    <td>${data.size}</td>
+                    <td>${data.files}</td>
+                    <td>${data.info_hash}</td>
+                    <td><button onclick="findRelated('${data.name}')">Find Related</button></td>
+                `;
+            });
+
+            socket.on('log_message', function(msg) {
+                document.getElementById('log').innerHTML += `<p>${msg.data}</p>`;
+            });
+
+            socket.on('clear_torrents', function() {
+                document.querySelector("#torrents_table tbody").innerHTML = "";
+            });
+
+            window.findRelated = function(name) {
+                socket.emit('find_related', {name: name});
+            }
+        });
+    </script>
+</body>
+</html>

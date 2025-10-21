@@ -39,5 +39,5 @@
 To run the application, execute the following command:
 
 ```bash
-python main.py
+python app.py
 ```
