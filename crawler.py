@@ -1,10 +1,12 @@
 import libtorrent as lt
 from urllib.parse import urlparse
 from logger import log
+import os
 
 class Crawler:
     def __init__(self, conn, config):
         self.conn = conn
+        self.dht_state_file = 'dht_state'
 
         performance_profile = config.get('performance_profile', 'balanced')
         if performance_profile == 'low_power':
@@ -38,7 +40,14 @@ class Crawler:
             if proxy.get('password'):
                 settings_pack.set_str(lt.settings_pack.proxy_password, proxy['password'])
 
-        self.session = lt.session(settings_pack)
+        # Load DHT state if it exists
+        if os.path.exists(self.dht_state_file):
+            log.info("Loading DHT state from file.")
+            with open(self.dht_state_file, 'rb') as f:
+                dht_state = f.read()
+            self.session = lt.session({'dht_state': dht_state, 'settings': settings_pack})
+        else:
+            self.session = lt.session(settings_pack)
 
         for tracker_url in config['trackers']:
             try:
@@ -67,5 +76,12 @@ class Crawler:
         self.metadata_session.listen_on(6892, 6902)
 
     def stop(self):
+        self.save_dht_state()
         self.session.pause()
         self.metadata_session.pause()
+
+    def save_dht_state(self):
+        log.info("Saving DHT state to file.")
+        dht_state = self.session.save_dht_state()
+        with open(self.dht_state_file, 'wb') as f:
+            f.write(dht_state)

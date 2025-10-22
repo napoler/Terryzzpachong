@@ -20,6 +20,7 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 *   **Search Result Filtering:** Filter and sort search results by name, size, and file count.
 *   **Real-time Updates:** The web UI is updated in real-time with new torrents and log messages.
 *   **Crawler Control:** Start and stop the crawler from the settings page.
+*   **DHT State Persistence:** Automatically saves and loads the DHT state for faster startups.
 *   **Configurable Bootstrap Nodes:** Set your own initial DHT bootstrap nodes.
 *   **Configurable Trackers:** Provide a list of public trackers to aid in peer discovery.
 *   **Startup Torrents:** Provide a list of info-hashes to kickstart the crawling process.

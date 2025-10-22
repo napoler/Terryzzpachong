@@ -14,6 +14,8 @@ This will start the web server. You can then access the web interface by opening
 
 By default, the application automatically starts a DHT crawler upon launch. This crawler listens to the BitTorrent DHT network and discovers new torrents in real-time. As new torrents are discovered, their metadata (name, size, file count, and info-hash) is saved to a local SQLite database (`seeds.db`) and displayed in the web interface.
 
+To improve startup speed, the application automatically saves the DHT state to a `dht_state` file when the crawler is stopped. This file is loaded on the next startup, allowing the crawler to rejoin the network almost instantly.
+
 ## Main Page
 
 ### Searching and Filtering
