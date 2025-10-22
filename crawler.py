@@ -25,7 +25,7 @@ class Crawler:
 
         settings['dht_bootstrap_nodes'] = ",".join(config['bootstrap_nodes'])
         settings['listen_interfaces'] = '0.0.0.0:6881'
-        settings['enable_dht_pex'] = True
+        settings['enable_pex'] = True
 
         proxy = config.get('proxy')
         if proxy and proxy.get('hostname') and proxy.get('port'):
