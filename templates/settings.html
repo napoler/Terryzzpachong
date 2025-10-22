@@ -19,6 +19,14 @@
     <a href="{{ url_for('clear_database_route') }}"><button>Clear Database</button></a>
 
     <form method="post">
+        <h2>Performance</h2>
+        <label for="performance_profile">Performance Profile:</label>
+        <select id="performance_profile" name="performance_profile">
+            <option value="low_power" {% if performance_profile == 'low_power' %}selected{% endif %}>Low Power</option>
+            <option value="balanced" {% if performance_profile == 'balanced' %}selected{% endif %}>Balanced</option>
+            <option value="high_performance" {% if performance_profile == 'high_performance' %}selected{% endif %}>High Performance</option>
+        </select><br><br>
+
         <h2>Proxy Settings</h2>
         <label for="proxy_type">Proxy Type:</label>
         <select id="proxy_type" name="proxy_type">

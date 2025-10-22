@@ -29,6 +29,14 @@ The main page provides several controls for searching and filtering the discover
 
 The settings page allows you to configure the application. You can access it by clicking the "Settings" link on the main page.
 
+### Performance
+
+You can choose a performance profile to control the crawler's resource usage:
+
+*   **Low Power:** Minimizes CPU and memory usage, ideal for background operation.
+*   **Balanced:** A standard configuration with a good mix of performance and resource efficiency.
+*   **High Performance:** Maximizes discovery speed, using more resources.
+
 ### Crawler Control
 
 On the settings page, you can see the current status of the crawler and start or stop it using the provided buttons.

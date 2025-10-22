@@ -25,6 +25,7 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 *   **Startup Torrents:** Provide a list of info-hashes to kickstart the crawling process.
 *   **Peer Exchange (PEX):** Enabled for more efficient peer discovery.
 *   **Proxy Support:** Configure a proxy for the crawler.
+*   **Performance Profiles:** Choose between Low Power, Balanced, and High Performance profiles.
 *   **Clear Database:** A feature to clear all torrents from the database.
 *   **Public API:** A JSON API for accessing torrent data programmatically, with a dedicated help page.
 *   **Enhanced Logging:** Structured, real-time logging to both the console and a file (`app.log`).

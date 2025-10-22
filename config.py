@@ -14,7 +14,8 @@ DEFAULT_CONFIG = {
         "username": "",
         "password": "",
         "type": "none"
-    }
+    },
+    "performance_profile": "balanced"
 }
 
 def load_config():

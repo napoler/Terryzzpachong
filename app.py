@@ -45,6 +45,8 @@ def settings():
         config['proxy']['password'] = request.form.get('proxy_password')
         config['proxy']['type'] = request.form.get('proxy_type')
 
+        config['performance_profile'] = request.form.get('performance_profile')
+
         save_config(config)
         return redirect(url_for('settings'))
 
@@ -59,6 +61,7 @@ def settings():
                            trackers=trackers_text,
                            startup_torrents=torrents_text,
                            proxy=config.get('proxy'),
+                           performance_profile=config.get('performance_profile'),
                            crawler_status=crawler_running)
 
 @app.route('/start_crawler')
