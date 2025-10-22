@@ -1,6 +1,6 @@
 import logging
 import sys
-
+from logging.handlers import RotatingFileHandler
 class SocketIOHandler(logging.Handler):
     """A custom logging handler that emits logs over Socket.IO."""
     def __init__(self, socketio):
@@ -23,8 +23,9 @@ def setup_logger(socketio=None):
     # Formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    # File Handler
-    file_handler = logging.FileHandler('app.log')
+    # File Handler with rotation
+    # Max 10MB per file, keep 3 backups
+    file_handler = RotatingFileHandler('app.log', maxBytes=10*1024*1024, backupCount=3)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

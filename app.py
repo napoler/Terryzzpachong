@@ -5,11 +5,13 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_socketio import SocketIO
 import threading
 import time
+import json
 import libtorrent as lt
 from crawler import Crawler
 from db.database import create_connection, create_table, search_seeds, insert_seed, get_torrent_by_hash, get_latest_torrents, clear_database
 from config import load_config, save_config
 from logger import setup_logger
+from utils import format_bytes
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='eventlet')
@@ -22,6 +24,16 @@ crawler_running = False
 def index():
     log.info("Serving index page.")
     return render_template('index.html')
+
+@app.route('/latest')
+def latest():
+    log.info("Serving latest torrents page.")
+    return render_template('latest.html')
+
+@app.route('/logs')
+def logs():
+    log.info("Serving logs page.")
+    return render_template('logs.html')
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -111,24 +123,39 @@ def api_get_torrent(info_hash):
     conn.close()
     if rows:
         row = rows[0]
-        return jsonify({'id': row[0], 'info_hash': row[1], 'name': row[2], 'size': row[3], 'files': row[4]})
+        try:
+            file_list = json.loads(row[5]) if row[5] else []
+        except json.JSONDecodeError:
+            file_list = []
+        return jsonify({'id': row[0], 'info_hash': row[1], 'name': row[2], 'size': row[3], 'files': row[4], 'file_list': file_list})
     log.warning(f"API request for non-existent torrent: {info_hash}")
     return jsonify({'error': 'Torrent not found'}), 404
 
 @app.route('/api/search/<query>')
 def api_search_torrents(query):
-    log.info(f"API search request for: {query}")
+    min_size = request.args.get('min_size', type=int)
+    max_size = request.args.get('max_size', type=int)
+    min_files = request.args.get('min_files', type=int)
+    max_files = request.args.get('max_files', type=int)
+    sort_by = request.args.get('sort_by', default='name', type=str)
+    sort_order = request.args.get('sort_order', default='asc', type=str)
+
+    log.info(f"API search request for: {query} with filters")
     conn = create_connection(db_file)
-    rows = search_seeds(conn, query)
+    rows = search_seeds(conn, query, min_size, max_size, min_files, max_files, sort_by, sort_order)
     conn.close()
     results = [{'id': row[0], 'info_hash': row[1], 'name': row[2], 'size': row[3], 'files': row[4]} for row in rows]
     return jsonify(results)
 
 @app.route('/api/latest')
 def api_latest_torrents():
-    log.info("API request for latest torrents.")
+    sort_by = request.args.get('sort_by', default='id', type=str)
+    sort_order = request.args.get('sort_order', default='desc', type=str)
+    limit = request.args.get('limit', default=50, type=int)
+
+    log.info(f"API request for latest torrents with sorting {sort_by} {sort_order}")
     conn = create_connection(db_file)
-    rows = get_latest_torrents(conn)
+    rows = get_latest_torrents(conn, limit, sort_by, sort_order)
     conn.close()
     results = [{'id': row[0], 'info_hash': row[1], 'name': row[2], 'size': row[3], 'files': row[4]} for row in rows]
     return jsonify(results)
@@ -173,42 +200,68 @@ def crawler_thread():
 
     while crawler_running:
         try:
+            # Main session alerts
             alerts = crawler_instance.session.pop_alerts()
             for alert in alerts:
                 if isinstance(alert, lt.dht_announce_alert):
                     info_hash = alert.info_hash
-                    params = {
-                        'save_path': '.',
-                        'storage_mode': lt.storage_mode_t(2),
-                        'paused': False,
-                        'auto_managed': True,
-                        'duplicate_is_error': True,
-                        'info_hash': info_hash
-                    }
-                    crawler_instance.metadata_session.add_torrent(params)
+                    # Add to metadata session to fetch details
+                    params = {'info_hash': info_hash}
+                    crawler_instance.metadata_session.async_add_torrent(params)
+                elif isinstance(alert, lt.torrent_error_alert):
+                    log.error(f"Libtorrent Alert: {alert}")
 
+            # Metadata session alerts
             metadata_alerts = crawler_instance.metadata_session.pop_alerts()
             for alert in metadata_alerts:
                 if isinstance(alert, lt.metadata_received_alert):
-                    info = alert.get_torrent_info()
-                    size = info.total_size()
-                    files = info.num_files()
-                    name = info.name()
-                    info_hash_str = str(info.info_hash())
-                    log.info(f"Discovered new torrent: {name}")
-                    insert_seed(conn, info_hash_str, name, size, files)
-                    socketio.emit('new_torrent', {'name': name, 'size': size, 'files': files, 'info_hash': info_hash_str})
+                    h = alert.handle
+                    if h.is_valid():
+                        info = h.get_torrent_info()
+                        size = info.total_size()
+                        num_files = info.num_files()
+                        name = info.name()
+                        info_hash_str = str(info.info_hash())
+
+                        files_info = []
+                        for i in range(num_files):
+                            file_entry = info.file_at(i)
+                            files_info.append({
+                                'path': file_entry.path,
+                                'size': file_entry.size
+                            })
+                        file_list_json = json.dumps(files_info)
+
+                        log.info(f"SUCCESS: Discovered metadata for '{name}'")
+                        insert_seed(conn, info_hash_str, name, size, num_files, file_list_json)
+                        socketio.emit('new_torrent', {'name': name, 'size': size, 'files': num_files, 'info_hash': info_hash_str})
+                        # Remove torrent from metadata session to save resources
+                        crawler_instance.metadata_session.remove_torrent(h)
+                elif isinstance(alert, lt.metadata_failed_alert):
+                    log.warning(f"Metadata fetch failed for torrent: {alert.handle.info_hash()}")
+                elif isinstance(alert, lt.torrent_error_alert):
+                     log.error(f"Metadata Session Error: {alert.error.message()} for torrent {alert.handle.info_hash()}")
+
 
             # Log status every 10 seconds
             current_time = time.time()
             if current_time - last_status_log_time > 10:
+                # Main session status
                 s = crawler_instance.session.status()
-                log.info(f"DHT nodes: {s.dht_nodes} | Torrents: {s.num_torrents}")
+                # Metadata session status
+                ms = crawler_instance.metadata_session.status()
+
+                log.info(
+                    f"[STATUS] DHT: {s.dht_nodes} nodes, {s.dht_torrents} torrents | "
+                    f"Peers: {s.num_peers} connected | "
+                    f"Traffic: {format_bytes(s.total_payload_download)} down, {format_bytes(s.total_payload_upload)} up | "
+                    f"Metadata Fetching: {len(crawler_instance.metadata_session.get_torrents())} active"
+                )
                 last_status_log_time = current_time
 
-            socketio.sleep(1) # Use socketio.sleep for eventlet
+            socketio.sleep(1)
         except Exception as e:
-            log.error(f"Crawler error: {e}", exc_info=True)
+            log.error(f"Crawler thread exception: {e}", exc_info=True)
 
 def start_crawler_background():
     global crawler_running

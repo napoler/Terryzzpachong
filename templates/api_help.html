@@ -24,16 +24,33 @@
     <ul>
         <li><strong>URL:</strong> <code>/api/search/&lt;query&gt;</code></li>
         <li><strong>Method:</strong> <code>GET</code></li>
-        <li><strong>Description:</strong> Searches for torrents matching the query.</li>
-        <li><strong>Example:</strong> <code>curl http://127.0.0.1:5000/api/search/ubuntu</code></li>
+        <li><strong>Description:</strong> Searches for torrents matching the query, with optional filters.</li>
+        <li><strong>URL Parameters (optional):</strong>
+            <ul>
+                <li><code>min_size</code> (int): Minimum size in bytes.</li>
+                <li><code>max_size</code> (int): Maximum size in bytes.</li>
+                <li><code>min_files</code> (int): Minimum number of files.</li>
+                <li><code>max_files</code> (int): Maximum number of files.</li>
+                <li><code>sort_by</code> (string): Field to sort by. Can be <code>name</code>, <code>size</code>, or <code>files</code>. Default is <code>name</code>.</li>
+                <li><code>sort_order</code> (string): Sort order. Can be <code>asc</code> or <code>desc</code>. Default is <code>asc</code>.</li>
+            </ul>
+        </li>
+        <li><strong>Example:</strong> <code>curl "http://127.0.0.1:5000/api/search/ubuntu?min_size=1000000000&sort_by=size&sort_order=desc"</code></li>
     </ul>
 
     <h2>Get Latest Torrents</h2>
     <ul>
         <li><strong>URL:</strong> <code>/api/latest</code></li>
         <li><strong>Method:</strong> <code>GET</code></li>
-        <li><strong>Description:</strong> Retrieves a list of the 50 most recently discovered torrents.</li>
-        <li><strong>Example:</strong> <code>curl http://127.0.0.1:5000/api/latest</code></li>
+        <li><strong>Description:</strong> Retrieves a list of the most recently discovered torrents, with optional sorting and limit.</li>
+        <li><strong>URL Parameters (optional):</strong>
+            <ul>
+                <li><code>limit</code> (int): Number of torrents to return. Default is <code>50</code>.</li>
+                <li><code>sort_by</code> (string): Field to sort by. Can be <code>id</code>, <code>name</code>, <code>size</code>, or <code>files</code>. Default is <code>id</code>.</li>
+                <li><code>sort_order</code> (string): Sort order. Can be <code>asc</code> or <code>desc</code>. Default is <code>desc</code>.</li>
+            </ul>
+        </li>
+        <li><strong>Example:</strong> <code>curl "http://127.0.0.1:5000/api/latest?limit=10&sort_by=size"</code></li>
     </ul>
 
     <p><a href="{{ url_for('index') }}">Back to Main Page</a></p>

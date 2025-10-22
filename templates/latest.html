@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Latest Torrents - BTSeedAggregator{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Latest Torrents</h2>
+    <table class="table table-striped table-bordered" id="torrents-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Files</th>
+                <th>Info Hash</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Torrents will be dynamically inserted here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    $(document).ready(function() {
+        var socket = io();
+
+        function fetchLatestTorrents() {
+            $.getJSON('/api/latest', function(data) {
+                var tbody = $('#torrents-table tbody');
+                tbody.empty(); // Clear existing rows
+                data.forEach(function(torrent) {
+                    var magnetLink = 'magnet:?xt=urn:btih:' + torrent.info_hash;
+                    var row = '<tr>' +
+                        '<td>' + torrent.name + '</td>' +
+                        '<td>' + formatBytes(torrent.size) + '</td>' +
+                        '<td>' + torrent.files + '</td>' +
+                        '<td>' + torrent.info_hash + '</td>' +
+                        '<td><a href="' + magnetLink + '" class="btn btn-primary btn-sm">Magnet</a></td>' +
+                        '</tr>';
+                    tbody.append(row);
+                });
+            });
+        }
+
+        // Fetch latest torrents on page load
+        fetchLatestTorrents();
+
+        // Also listen for new torrents coming in via websocket
+        socket.on('new_torrent', function(torrent) {
+            // Prepend new torrent to the top of the table
+            var magnetLink = 'magnet:?xt=urn:btih:' + torrent.info_hash;
+            var row = '<tr>' +
+                '<td>' + torrent.name + '</td>' +
+                '<td>' + formatBytes(torrent.size) + '</td>' +
+                '<td>' + torrent.files + '</td>' +
+                '<td>' + torrent.info_hash + '</td>' +
+                '<td><a href="' + magnetLink + '" class="btn btn-primary btn-sm">Magnet</a></td>' +
+                '</tr>';
+            $('#torrents-table tbody').prepend(row);
+        });
+
+        socket.on('clear_torrents', function() {
+            $('#torrents-table tbody').empty();
+        });
+    });
+</script>
+{% endblock %}

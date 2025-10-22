@@ -10,8 +10,8 @@ class TestAPI(unittest.TestCase):
         self.db_file = db_file
         self.conn = create_connection(self.db_file)
         create_table(self.conn)
-        insert_seed(self.conn, 'test_hash_1', 'test_torrent_1', 12345, 1)
-        insert_seed(self.conn, 'test_hash_2', 'test_torrent_2', 67890, 2)
+        insert_seed(self.conn, 'test_hash_1', 'test_torrent_1', 12345, 1, '[]')
+        insert_seed(self.conn, 'test_hash_2', 'test_torrent_2', 67890, 2, '[]')
 
     def tearDown(self):
         self.conn.close()

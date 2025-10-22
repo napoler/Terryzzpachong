@@ -1,38 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>BTSeedAggregator</title>
-    <style>
-        body { font-family: sans-serif; }
-        #torrents_table, #log { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        #torrents_table th, #torrents_table td { border: 1px solid #ddd; padding: 8px; }
-        #torrents_table th { background-color: #f2f2f2; }
-        #log { height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 5px; }
-        .search-controls { margin-bottom: 10px; }
-    </style>
-</head>
-<body>
-    <h1>BTSeedAggregator</h1>
-    <p><a href="{{ url_for('settings') }}">Settings</a> | <a href="{{ url_for('api_help') }}">API Help</a></p>
+{% extends "base.html" %}
+{% block title %}Search - BTSeedAggregator{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Search Torrents</h2>
+    <form id="search-form" class="form-inline mb-4">
+        <input type="text" id="query" class="form-control mr-sm-2" placeholder="Search for torrents..." style="width: 40%;">
 
-    <div class="search-controls">
-        <input type="text" id="search_query" placeholder="Search...">
-        <input type="number" id="min_size" placeholder="Min size (bytes)">
-        <input type="number" id="max_size" placeholder="Max size (bytes)">
-        <select id="sort_by">
+        <label for="min_size" class="mr-sm-2">Min Size (MB):</label>
+        <input type="number" id="min_size" class="form-control mr-sm-2" placeholder="e.g., 100">
+
+        <label for="max_size" class="mr-sm-2">Max Size (MB):</label>
+        <input type="number" id="max_size" class="form-control mr-sm-2" placeholder="e.g., 1024">
+
+        <label for="min_files" class="mr-sm-2">Min Files:</label>
+        <input type="number" id="min_files" class="form-control mr-sm-2" placeholder="e.g., 1">
+
+        <label for="max_files" class="mr-sm-2">Max Files:</label>
+        <input type="number" id="max_files" class="form-control mr-sm-2" placeholder="e.g., 10">
+
+        <label for="sort_by" class="mr-sm-2">Sort by:</label>
+        <select id="sort_by" class="form-control mr-sm-2">
             <option value="name">Name</option>
             <option value="size">Size</option>
             <option value="files">Files</option>
         </select>
-        <select id="sort_order">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-        </select>
-        <button onclick="search()">Search</button>
-    </div>
 
-    <table id="torrents_table">
+        <select id="sort_order" class="form-control mr-sm-2">
+            <option value="asc">Asc</option>
+            <option value="desc">Desc</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <table class="table table-striped table-bordered" id="torrents-table">
         <thead>
             <tr>
                 <th>Name</th>
@@ -43,51 +44,109 @@
             </tr>
         </thead>
         <tbody>
+            <!-- Torrents will be dynamically inserted here -->
         </tbody>
     </table>
-    <h2>Log</h2>
-    <div id="log"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+</div>
 
-            socket.on('new_torrent', function(data) {
-                var table_body = document.querySelector("#torrents_table tbody");
-                var new_row = table_body.insertRow(0);
-                new_row.innerHTML = `
-                    <td>${data.name}</td>
-                    <td>${data.size}</td>
-                    <td>${data.files}</td>
-                    <td>${data.info_hash}</td>
-                    <td><button onclick="search('${data.name}')">Find Related</button></td>
-                `;
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Torrent Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h4 id="torrentName"></h4>
+                <p><strong>Total Size:</strong> <span id="torrentSize"></span></p>
+                <p><strong>Total Files:</strong> <span id="torrentFiles"></span></p>
+                <h6>File List:</h6>
+                <div id="fileList" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    $(document).ready(function() {
+        var socket = io();
+
+        $('#search-form').on('submit', function(e) {
+            e.preventDefault();
+            var query = $('#query').val();
+            var min_size = $('#min_size').val();
+            var max_size = $('#max_size').val();
+            var min_files = $('#min_files').val();
+            var max_files = $('#max_files').val();
+            var sort_by = $('#sort_by').val();
+            var sort_order = $('#sort_order').val();
+
+            socket.emit('search', {
+                query: query,
+                min_size: min_size ? parseInt(min_size) * 1024 * 1024 : null,
+                max_size: max_size ? parseInt(max_size) * 1024 * 1024 : null,
+                min_files: min_files ? parseInt(min_files) : null,
+                max_files: max_files ? parseInt(max_files) : null,
+                sort_by: sort_by,
+                sort_order: sort_order
             });
-
-            socket.on('log_message', function(msg) {
-                document.getElementById('log').innerHTML += `<p>${msg.data}</p>`;
-            });
-
-            socket.on('clear_torrents', function() {
-                document.querySelector("#torrents_table tbody").innerHTML = "";
-            });
-
-            window.search = function(query) {
-                var search_query = query || document.getElementById('search_query').value;
-                var min_size = document.getElementById('min_size').value;
-                var max_size = document.getElementById('max_size').value;
-                var sort_by = document.getElementById('sort_by').value;
-                var sort_order = document.getElementById('sort_order').value;
-
-                socket.emit('search', {
-                    query: search_query,
-                    min_size: min_size,
-                    max_size: max_size,
-                    sort_by: sort_by,
-                    sort_order: sort_order
-                });
-            }
         });
-    </script>
-</body>
-</html>
+
+        socket.on('new_torrent', function(torrent) {
+            var magnetLink = 'magnet:?xt=urn:btih:' + torrent.info_hash;
+            var detailsButton = `<button class="btn btn-info btn-sm" data-hash="${torrent.info_hash}" onclick="showDetails(this)">Details</button>`;
+            var row = '<tr>' +
+                '<td>' + torrent.name + '</td>' +
+                '<td>' + formatBytes(torrent.size) + '</td>' +
+                '<td>' + torrent.files + '</td>' +
+                '<td>' + torrent.info_hash + '</td>' +
+                '<td><a href="' + magnetLink + '" class="btn btn-primary btn-sm">Magnet</a> ' + detailsButton + '</td>' +
+                '</tr>';
+            $('#torrents-table tbody').append(row);
+        });
+
+        window.showDetails = function(button) {
+            var infoHash = $(button).data('hash');
+            $.get('/api/torrent/' + infoHash, function(data) {
+                $('#torrentName').text(data.name);
+                $('#torrentSize').text(formatBytes(data.size));
+                $('#torrentFiles').text(data.files);
+                var fileListHtml = '<ul class="list-group">';
+                if (data.file_list && data.file_list.length > 0) {
+                    data.file_list.forEach(function(file) {
+                        fileListHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">${file.path}<span class="badge badge-primary badge-pill">${formatBytes(file.size)}</span></li>`;
+                    });
+                } else {
+                    fileListHtml += '<li class="list-group-item">No file list available.</li>';
+                }
+                fileListHtml += '</ul>';
+                $('#fileList').html(fileListHtml);
+                $('#detailsModal').modal('show');
+            });
+        }
+
+        socket.on('clear_torrents', function() {
+            $('#torrents-table tbody').empty();
+        });
+
+        // Initial load of all torrents
+        socket.emit('search', { query: '' });
+    });
+</script>
+{% endblock %}

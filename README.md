@@ -1,6 +1,38 @@
 # BTSeedAggregator
 
-BTSeedAggregator is a Python application for discovering and aggregating BT seeds from the BitTorrent DHT network. It is designed to be a lightweight, ad-free, and user-friendly alternative to other torrent clients.
+BTSeedAggregator is a Python application for discovering and aggregating BT seeds from the BitTorrent DHT network. It is designed to be a lightweight, ad-free, and user-friendly tool for finding torrents.
+
+## Getting Started
+
+### Prerequisites
+
+*   Python 3.7+
+*   `libtorrent` library installed. The specific version depends on your OS.
+    *   **Ubuntu/Debian:** `sudo apt-get install python3-libtorrent`
+    *   **macOS:** `brew install libtorrent-rasterbar`
+    *   **Windows:** Download a compatible wheel from a third-party source or build from source.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-repo/BTSeedAggregator.git
+    cd BTSeedAggregator
+    ```
+
+2.  **Install Python dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Running the Application
+
+1.  **Start the Flask server:**
+    ```bash
+    python app.py
+    ```
+
+2.  **Open your web browser** and navigate to `http://127.0.0.1:5000`.
 
 ## Technology Stack
 
@@ -8,35 +40,29 @@ BTSeedAggregator is a Python application for discovering and aggregating BT seed
 *   **Real-time Communication:** Flask-SocketIO
 *   **DHT Crawler:** `libtorrent`, a powerful and efficient C++ library with Python bindings.
 *   **Database:** SQLite for local storage of torrent metadata.
-*   **Logging:** Python's built-in `logging` module.
+*   **Frontend:** Bootstrap, jQuery, Socket.IO
+
+## Web Interface
+
+The application is organized into several pages:
+
+*   **Search:** The main page for searching discovered torrents. You can filter by name, size, and sort the results.
+*   **Latest:** Displays a real-time list of the most recently discovered torrents.
+*   **Logs:** A live stream of the application's log messages, providing insight into the crawler's status and activities.
+*   **Settings:** A comprehensive page to configure the application, including starting/stopping the crawler, managing the database, setting performance profiles, and configuring a proxy.
+*   **API:** A help page documenting the public JSON API for programmatic access to the data.
 
 ## Features
 
-### Implemented
-
 *   **DHT Crawler:** A lightweight crawler that connects to the BitTorrent DHT network to discover new torrents.
-*   **SQLite Database:** A local SQLite database to store and manage discovered torrents.
-*   **Web User Interface:** A user-friendly web UI to interact with the application.
-*   **Search Result Filtering:** Filter and sort search results by name, size, and file count.
+*   **Web User Interface:** A clean, user-friendly web UI to interact with the application.
+*   **Advanced Search:** Filter and sort search results by name, size, and file count.
 *   **Real-time Updates:** The web UI is updated in real-time with new torrents and log messages.
 *   **Crawler Control:** Start and stop the crawler from the settings page.
 *   **DHT State Persistence:** Automatically saves and loads the DHT state for faster startups.
-*   **Configurable Bootstrap Nodes:** Set your own initial DHT bootstrap nodes.
-*   **Configurable Trackers:** Provide a list of public trackers to aid in peer discovery.
-*   **Startup Torrents:** Provide a list of info-hashes to kickstart the crawling process.
-*   **Peer Exchange (PEX):** Enabled for more efficient peer discovery.
-*   **Proxy Support:** Configure a proxy for the crawler.
+*   **Configurable Discovery Aids:** Set custom bootstrap nodes, public trackers, and startup info-hashes to accelerate peer discovery.
+*   **Proxy Support:** Configure an HTTP or SOCKS5 proxy for the crawler.
 *   **Performance Profiles:** Choose between Low Power, Balanced, and High Performance profiles.
-*   **Clear Database:** A feature to clear all torrents from the database.
-*   **Public API:** A JSON API for accessing torrent data programmatically, with a dedicated help page.
-*   **Enhanced Logging:** Structured, real-time logging to both the console and a file (`app.log`).
-
-### Planned
-
-*   **Advanced Filtering:** Add a sidebar for filtering results by category, size, etc.
-*   **Detailed Torrent Information:** Add a bottom panel to show detailed information about the selected torrent.
-*   **More Comprehensive Tests:** Add more comprehensive tests to ensure the application is stable and correct.
-
-## Development Status
-
-This project is under active development. The core features, including DHT crawling, database storage, and the web UI, are implemented and functional. The application is now in a usable state for discovering and viewing torrents. Future work will focus on adding more advanced features and improving stability.
+*   **Database Management:** A feature to clear all torrents from the database.
+*   **Public API:** A JSON API for accessing torrent data programmatically.
+*   **Enhanced Logging:** Structured, real-time logging to the web UI, console, and a file (`app.log`).

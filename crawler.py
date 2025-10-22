@@ -61,18 +61,14 @@ class Crawler:
         self.metadata_session = lt.session()
         self.metadata_session.listen_on(6892, 6902)
 
-        for info_hash in config['startup_torrents']:
-            params = {
-                'save_path': '.',
-                'storage_mode': lt.storage_mode_t(2),
-                'paused': False,
-                'auto_managed': True,
-                'duplicate_is_error': True,
-                'info_hash': info_hash
-            }
-            self.session.add_torrent(params)
-            self.metadata_session.add_torrent(params)
-
+        # Add startup torrents to the metadata session to kickstart discovery
+        for info_hash_str in config['startup_torrents']:
+            try:
+                params = {'info_hash': bytes.fromhex(info_hash_str)}
+                self.metadata_session.async_add_torrent(params)
+                log.info(f"Added startup torrent {info_hash_str} to metadata session.")
+            except ValueError as e:
+                log.error(f"Invalid info-hash in config: {info_hash_str}. Error: {e}")
 
     def stop(self):
         self.save_dht_state()

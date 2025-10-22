@@ -19,28 +19,35 @@ def create_table(conn):
                 info_hash TEXT UNIQUE,
                 name TEXT,
                 size INTEGER,
-                files INTEGER
+                files INTEGER,
+                file_list TEXT
             )
         ''')
+        # Add column if it doesn't exist for backward compatibility
+        try:
+            c.execute('ALTER TABLE seeds ADD COLUMN file_list TEXT')
+        except sqlite3.OperationalError:
+            # Column already exists
+            pass
     except sqlite3.Error as e:
         print(e)
 
-def insert_seed(conn, info_hash, name, size, files):
+def insert_seed(conn, info_hash, name, size, files, file_list):
     """
     Create a new seed into the seeds table
     """
-    sql = ''' INSERT OR IGNORE INTO seeds(info_hash,name,size,files)
-              VALUES(?,?,?,?) '''
+    sql = ''' INSERT OR IGNORE INTO seeds(info_hash,name,size,files,file_list)
+              VALUES(?,?,?,?,?) '''
     cur = conn.cursor()
-    cur.execute(sql, (info_hash, name, size, files))
+    cur.execute(sql, (info_hash, name, size, files, file_list))
     conn.commit()
     return cur.lastrowid
 
-def search_seeds(conn, query, min_size=None, max_size=None, sort_by='name', sort_order='asc'):
+def search_seeds(conn, query, min_size=None, max_size=None, min_files=None, max_files=None, sort_by='name', sort_order='asc'):
     """
     Query all rows in the seeds table with optional filtering and sorting.
     """
-    sql = "SELECT * FROM seeds WHERE name LIKE ?"
+    sql = "SELECT id, info_hash, name, size, files FROM seeds WHERE name LIKE ?"
     params = ['%' + query + '%']
 
     if min_size is not None:
@@ -49,6 +56,12 @@ def search_seeds(conn, query, min_size=None, max_size=None, sort_by='name', sort
     if max_size is not None:
         sql += " AND size <= ?"
         params.append(max_size)
+    if min_files is not None:
+        sql += " AND files >= ?"
+        params.append(min_files)
+    if max_files is not None:
+        sql += " AND files <= ?"
+        params.append(max_files)
 
     if sort_by in ['name', 'size', 'files']:
         sql += f" ORDER BY {sort_by}"
@@ -67,16 +80,29 @@ def get_torrent_by_hash(conn, info_hash):
     Query a torrent by its info_hash
     """
     cur = conn.cursor()
-    cur.execute("SELECT * FROM seeds WHERE info_hash=?", (info_hash,))
+    cur.execute("SELECT id, info_hash, name, size, files, file_list FROM seeds WHERE info_hash=?", (info_hash,))
     rows = cur.fetchall()
     return rows
 
-def get_latest_torrents(conn, limit=50):
+def get_latest_torrents(conn, limit=50, sort_by='id', sort_order='desc'):
     """
-    Query the latest torrents
+    Query the latest torrents with sorting
     """
+    sql = "SELECT id, info_hash, name, size, files FROM seeds"
+
+    if sort_by in ['id', 'name', 'size', 'files']:
+        sql += f" ORDER BY {sort_by}"
+        if sort_order.lower() == 'desc':
+            sql += " DESC"
+        else:
+            sql += " ASC"
+    else: # Default sort
+        sql += " ORDER BY id DESC"
+
+    sql += " LIMIT ?"
+
     cur = conn.cursor()
-    cur.execute("SELECT * FROM seeds ORDER BY id DESC LIMIT ?", (limit,))
+    cur.execute(sql, (limit,))
     rows = cur.fetchall()
     return rows
 
