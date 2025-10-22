@@ -58,6 +58,9 @@ class Crawler:
             except Exception as e:
                 log.error(f"Error parsing tracker URL {tracker_url}: {e}")
 
+        self.metadata_session = lt.session()
+        self.metadata_session.listen_on(6892, 6902)
+
         for info_hash in config['startup_torrents']:
             params = {
                 'save_path': '.',
@@ -68,9 +71,8 @@ class Crawler:
                 'info_hash': info_hash
             }
             self.session.add_torrent(params)
+            self.metadata_session.add_torrent(params)
 
-        self.metadata_session = lt.session()
-        self.metadata_session.listen_on(6892, 6902)
 
     def stop(self):
         self.save_dht_state()
