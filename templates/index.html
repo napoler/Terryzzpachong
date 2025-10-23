@@ -67,6 +67,7 @@
                 <div id="fileList" style="max-height: 400px; overflow-y: auto;"></div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-info" id="find-related-btn">Find Related</button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -147,6 +148,27 @@
 
         // Initial load of all torrents
         socket.emit('search', { query: '' });
+
+        function getKeywords(name) {
+            // Remove common tags and resolutions
+            let keywords = name.replace(/\[.*?\]|\(.*?\)|1080p|720p|4k|x264|x265|bluray|web-dl|hdtv|dvdrip/gi, ' ');
+            // Remove file extensions
+            keywords = keywords.replace(/\.(mkv|mp4|avi|srt)$/i, ' ');
+            // Replace dots and underscores with spaces
+            keywords = keywords.replace(/[\._]/g, ' ');
+            // Trim and remove extra spaces
+            keywords = keywords.trim().replace(/\s+/g, ' ');
+            // Take the first few words as keywords
+            return keywords.split(' ').slice(0, 4).join(' ');
+        }
+
+        $('#find-related-btn').on('click', function() {
+            var torrentName = $('#torrentName').text();
+            var keywords = getKeywords(torrentName);
+            $('#query').val(keywords);
+            $('#search-form').submit();
+            $('#detailsModal').modal('hide');
+        });
     });
 </script>
 {% endblock %}
