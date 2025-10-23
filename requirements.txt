@@ -1,0 +1,11 @@
+# Core P2P and Async
+libp2p
+trio
+
+# Web Framework
+quart
+quart-cors
+
+# Data Persistence & Utilities
+multiaddr
+protobuf
