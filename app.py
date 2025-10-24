@@ -97,7 +97,8 @@ async def p2p_worker(quart_app):
                     if req["type"] == "post_comment":
                         coordinator.post_comment(req["info_hash"], req["text"])
                     elif req["type"] == "get_stats":
-                        peers = p2p_node.host.get_network().get_peers()
+                        swarm = p2p_node.host.get_network()
+                        peers = list(swarm.connections.keys())
                         stats = {
                             "peer_id": p2p_node.host.get_id().to_string(),
                             "connected_peers": len(peers),
@@ -126,9 +127,6 @@ def run_p2p_thread(quart_app):
 # --- Application Entry Point ---
 
 if __name__ == "__main__":
-    if os.path.exists(KEY_FILE):
-        os.remove(KEY_FILE)
-
     p2p_thread = Thread(target=run_p2p_thread, args=(app,), daemon=True)
     p2p_thread.start()
 

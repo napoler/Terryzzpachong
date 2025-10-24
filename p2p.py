@@ -60,7 +60,10 @@ class P2PNode:
             nursery.start_soon(self._run_service, self.gossip)
             logger.info("PubSub services starting.")
 
-            # await self._connect_to_bootstrap_nodes() # NOTE: Disabled for local/CI testing
+            try:
+                await self._connect_to_bootstrap_nodes()
+            except Exception as e:
+                logger.error(f"Failed to connect to bootstrap nodes: {e}")
 
             if handler_callback and pubsub_topics:
                 for topic in pubsub_topics:
