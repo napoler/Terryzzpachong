@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results for "{{ query }}" - BTSeedAggregator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Search Results for <em>"{{ query }}"</em></h1>
+
+    <ul id="search-results-list" class="torrent-list">
+        <!-- Search results will be loaded here via JavaScript -->
+    </ul>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const resultsList = document.getElementById('search-results-list');
+    const query = "{{ query|safe }}";
+
+    async function fetchSearchResults() {
+        try {
+            // URL-encode the query to handle special characters
+            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const results = await response.json();
+
+            resultsList.innerHTML = ''; // Clear list
+            if (results.length === 0) {
+                resultsList.innerHTML = '<li><p>No results found for your query.</p></li>';
+                return;
+            }
+
+            results.forEach(torrent => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                const link = document.createElement('a');
+                link.href = `/comments/${torrent.info_hash}`;
+                link.textContent = torrent.name;
+                li.appendChild(link);
+                resultsList.appendChild(li);
+            });
+        } catch (error) {
+            console.error("Failed to fetch search results:", error);
+            resultsList.innerHTML = '<li><p>Could not load search results. Please try again later.</p></li>';
+        }
+    }
+
+    if (query) {
+        fetchSearchResults();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - BTSeedAggregator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Welcome to BTSeedAggregator</h1>
+    <p>A decentralized, real-time torrent discovery engine.</p>
+
+    <h2>Latest Discoveries</h2>
+    <ul id="recent-torrents-list" class="torrent-list">
+        <!-- Recent torrents will be loaded here via JavaScript -->
+    </ul>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const recentList = document.getElementById('recent-torrents-list');
+
+    async function fetchRecentTorrents() {
+        try {
+            const response = await fetch('/api/recent-torrents');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const torrents = await response.json();
+
+            recentList.innerHTML = ''; // Clear list
+            if (torrents.length === 0) {
+                recentList.innerHTML = '<li><p>No recent torrents with metadata found. The crawler is working...</p></li>';
+                return;
+            }
+
+            torrents.forEach(torrent => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                const link = document.createElement('a');
+                link.href = `/comments/${torrent.info_hash}`;
+                link.textContent = torrent.name;
+                li.appendChild(link);
+                recentList.appendChild(li);
+            });
+        } catch (error) {
+            console.error("Failed to fetch recent torrents:", error);
+            recentList.innerHTML = '<li><p>Could not load recent torrents. Please try again later.</p></li>';
+        }
+    }
+
+    fetchRecentTorrents();
+});
+</script>
+<style>
+.torrent-list { list-style: none; padding: 0; }
+.list-item { background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; padding: 1em; margin-bottom: 1em; }
+.list-item a { text-decoration: none; color: #007bff; font-weight: bold; }
+</style>
+{% endblock %}

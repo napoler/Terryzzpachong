@@ -1,47 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hot Torrents by Comment Count</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2em; background-color: #f8f9fa; color: #212529; }
-        .container { max-width: 800px; margin: auto; }
-        h1 { font-size: 1.5em; }
-        .hot-list { list-style: none; padding: 0; }
-        .hot-item { background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; padding: 1em; margin-bottom: 1em; display: flex; justify-content: space-between; align-items: center; }
-        .info-hash { font-family: monospace; font-size: 0.9em; word-break: break-all; }
-        a { color: #007bff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        nav a { margin-right: 1em; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav>
-            <a href="/hot">Hot Torrents</a>
-            <a href="/stats">Network Stats</a>
-        </nav>
-        <hr>
-        <h1>🔥 Hot Torrents</h1>
-        <p>Torrents with the most comments across the network.</p>
+{% extends "base.html" %}
 
-        <ul id="hot-list" class="hot-list">
-            <!-- Hot torrents will be loaded here -->
-        </ul>
-    </div>
+{% block title %}Hot Torrents - BTSeedAggregator{% endblock %}
 
-    <script>
+{% block content %}
+<div class="container">
+    <h1>🔥 Hot Torrents</h1>
+    <p>Torrents with the most comments across the network.</p>
+
+    <ul id="hot-list" class="hot-list">
+        <!-- Hot torrents will be loaded here via JavaScript -->
+    </ul>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
         const hotList = document.getElementById('hot-list');
 
         async function fetchHotTorrents() {
             try {
                 const response = await fetch('/api/hot-torrents');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const torrents = await response.json();
 
                 hotList.innerHTML = ''; // Clear list
                 if (torrents.length === 0) {
-                    hotList.innerHTML = '<p>No commented torrents found yet.</p>';
+                    hotList.innerHTML = '<li><p>No commented torrents found yet.</p></li>';
                     return;
                 }
 
@@ -51,8 +36,12 @@
 
                     const link = document.createElement('a');
                     link.href = `/comments/${torrent.info_hash}`;
-                    link.className = 'info-hash';
-                    link.textContent = torrent.info_hash;
+                    link.textContent = torrent.name; // Display the name now
+
+                    // Optionally, keep the info_hash visible but less prominent
+                    const infoHashSpan = document.createElement('small');
+                    infoHashSpan.className = 'info-hash';
+                    infoHashSpan.textContent = torrent.info_hash;
 
                     const count = document.createElement('span');
                     count.textContent = `${torrent.comment_count} comment(s)`;
@@ -63,12 +52,17 @@
                 });
             } catch (error) {
                 console.error("Failed to fetch hot torrents:", error);
-                hotList.innerHTML = '<p>Could not load hot torrents.</p>';
+                hotList.innerHTML = '<li><p>Could not load hot torrents. Please try again later.</p></li>';
             }
         }
 
         // Initial load
         fetchHotTorrents();
-    </script>
-</body>
-</html>
+    });
+</script>
+<style>
+.hot-list { list-style: none; padding: 0; }
+.hot-item { background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; padding: 1em; margin-bottom: 1em; display: flex; justify-content: space-between; align-items: center; }
+.info-hash { font-family: monospace; font-size: 0.9em; word-break: break-all; }
+</style>
+{% endblock %}

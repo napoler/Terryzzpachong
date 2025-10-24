@@ -1,54 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comments for {{ info_hash }}</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2em; background-color: #f8f9fa; color: #212529; }
-        .container { max-width: 800px; margin: auto; }
-        h1 { font-size: 1.5em; word-wrap: break-word; }
-        .comment-form { margin-bottom: 2em; }
-        textarea { width: 100%; padding: 0.5em; font-size: 1em; border-radius: 5px; border: 1px solid #ced4da; }
-        button { font-size: 1em; padding: 0.5em 1em; border-radius: 5px; border: none; background-color: #007bff; color: white; cursor: pointer; }
-        .comments-list { list-style: none; padding: 0; }
-        .comment-item { background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; padding: 1em; margin-bottom: 1em; }
-        .comment-author { font-weight: bold; font-size: 0.9em; color: #495057; }
-        .comment-meta { font-size: 0.8em; color: #6c757d; }
-        nav a { margin-right: 1em; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav>
-            <a href="/hot">Hot Torrents</a>
-            <a href="/stats">Network Stats</a>
-        </nav>
-        <hr>
-        <h1>Comments for <code>{{ info_hash }}</code></h1>
+{% extends "base.html" %}
 
-        <div class="comment-form">
-            <h3>Post a new comment</h3>
-            <form id="new-comment-form">
-                <textarea id="comment-text" name="text" rows="4" required placeholder="Write your comment here..."></textarea>
-                <br><br>
-                <button type="submit">Submit</button>
-            </form>
-        </div>
+{% block title %}Comments for {{ info_hash }} - BTSeedAggregator{% endblock %}
 
-        <h2>Discussion</h2>
-        <ul id="comments-list" class="comments-list">
-            <!-- Comments will be loaded here -->
-        </ul>
+{% block content %}
+<div class="container">
+    <h1>Comments for <code>{{ info_hash }}</code></h1>
+
+    <div class="comment-form">
+        <h3>Post a new comment</h3>
+        <form id="new-comment-form">
+            <textarea id="comment-text" name="text" rows="4" required placeholder="Write your comment here..."></textarea>
+            <br><br>
+            <button type="submit">Submit</button>
+        </form>
     </div>
 
-    <script>
+    <h2>Discussion</h2>
+    <ul id="comments-list" class="comments-list">
+        <!-- Comments will be loaded here -->
+    </ul>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
         const infoHash = "{{ info_hash }}";
         const commentsList = document.getElementById('comments-list');
         const commentForm = document.getElementById('new-comment-form');
         const commentTextArea = document.getElementById('comment-text');
 
-        // Function to fetch and display comments
         async function fetchComments() {
             try {
                 const response = await fetch(`/api/comments/${infoHash}`);
@@ -56,7 +35,7 @@
 
                 commentsList.innerHTML = ''; // Clear list
                 if (comments.length === 0) {
-                    commentsList.innerHTML = '<p>No comments yet. Be the first to post!</p>';
+                    commentsList.innerHTML = '<li><p>No comments yet. Be the first to post!</p></li>';
                     return;
                 }
 
@@ -82,15 +61,14 @@
                 });
             } catch (error) {
                 console.error("Failed to fetch comments:", error);
-                commentsList.innerHTML = '<p>Could not load comments.</p>';
+                commentsList.innerHTML = '<li><p>Could not load comments.</p></li>';
             }
         }
 
-        // Function to handle form submission
         commentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = commentTextArea.value;
-            if (!text) return;
+            if (!text.trim()) return;
 
             try {
                 const response = await fetch(`/api/comments/${infoHash}`, {
@@ -101,8 +79,7 @@
 
                 const result = await response.json();
                 if (result.status === 'success') {
-                    commentTextArea.value = ''; // Clear form
-                    // Give the backend a moment to process, then refresh
+                    commentTextArea.value = '';
                     setTimeout(fetchComments, 500);
                 } else {
                     alert('Failed to post comment: ' + (result.message || 'Unknown error'));
@@ -113,8 +90,18 @@
             }
         });
 
-        // Initial load of comments
         fetchComments();
-    </script>
-</body>
-</html>
+    });
+</script>
+
+<style>
+.comment-form { margin-bottom: 2em; }
+textarea { width: 100%; padding: 0.5em; font-size: 1em; border-radius: 5px; border: 1px solid #ced4da; box-sizing: border-box; }
+button { font-size: 1em; padding: 0.5em 1em; border-radius: 5px; border: none; background-color: #007bff; color: white; cursor: pointer; }
+.comments-list { list-style: none; padding: 0; }
+.comment-item { background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; padding: 1em; margin-bottom: 1em; }
+.comment-author { font-weight: bold; font-size: 0.9em; color: #495057; word-break: break-all; }
+.comment-meta { font-size: 0.8em; color: #6c757d; }
+code { word-wrap: break-word; }
+</style>
+{% endblock %}

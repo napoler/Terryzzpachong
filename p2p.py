@@ -45,9 +45,9 @@ class P2PNode:
         async with self.host.run(listen_addrs=listen_addrs), trio.open_nursery() as nursery:
             self._log_host_info()
 
-            self.dht = KadDHT(self.host, mode=DHTMode.SERVER)
+            self.dht = KadDHT(self.host, mode=DHTMode.SERVER, enable_random_walk=True)
             nursery.start_soon(self._run_service, self.dht)
-            logger.info("Kademlia DHT service starting.")
+            logger.info("Kademlia DHT service with Random Walk enabled.")
 
             self.gossip = GossipSub(
                 protocols=[GOSSIPSUB_PROTOCOL_ID],

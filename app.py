@@ -9,7 +9,7 @@ import uuid
 
 from database import DatabaseManager
 from p2p import P2PNode, KEY_FILE
-from coordinator import DataCoordinator, COMMENT_TOPIC
+from coordinator import DataCoordinator, COMMENT_TOPIC, CRAWLER_TOPIC
 
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -24,8 +24,8 @@ app = Quart(__name__)
 app = cors(app, allow_origin="*")
 
 @app.route("/")
-def index():
-    return "Welcome! Go to /hot to see popular torrents or /stats for network info."
+async def index():
+    return await render_template("index.html")
 
 @app.route("/hot")
 async def hot_torrents_page():
@@ -38,6 +38,11 @@ async def stats_page():
 @app.route("/comments/<info_hash>")
 async def comment_page(info_hash):
     return await render_template("comments.html", info_hash=info_hash)
+
+@app.route("/search")
+async def search_page():
+    query = request.args.get("q", "")
+    return await render_template("search_results.html", query=query)
 
 @app.route("/api/stats")
 async def stats_api():
@@ -58,6 +63,24 @@ async def hot_torrents_api():
     db_manager = app.config["db_manager"]
     hot_torrents = db_manager.get_hot_torrents()
     return jsonify(hot_torrents)
+
+@app.route("/api/recent-torrents")
+async def recent_torrents_api():
+    """API endpoint to get the most recently discovered torrents."""
+    db_manager = app.config["db_manager"]
+    recent_torrents = db_manager.get_recent_torrents()
+    return jsonify(recent_torrents)
+
+@app.route("/api/search")
+async def search_api():
+    """API endpoint for full-text search of torrents."""
+    query = request.args.get("q", "")
+    if not query:
+        return jsonify({"error": "Search query cannot be empty."}), 400
+
+    db_manager = app.config["db_manager"]
+    search_results = db_manager.search_torrents(query)
+    return jsonify(search_results)
 
 @app.route("/api/comments/<info_hash>", methods=["GET"])
 async def get_comments_api(info_hash):
@@ -90,6 +113,16 @@ async def p2p_worker(quart_app):
         coordinator = DataCoordinator(p2p_node, db_manager, nursery)
         quart_app.config["coordinator"] = coordinator
 
+        # Start all background services
+        await coordinator.start_services()
+
+        def combined_handler(msg):
+            """A single handler to route messages from different topics."""
+            if msg.topic == COMMENT_TOPIC:
+                coordinator.handle_comment_message(msg)
+            elif msg.topic == CRAWLER_TOPIC:
+                coordinator.handle_crawler_message(msg)
+
         async def request_handler():
             while True:
                 try:
@@ -112,8 +145,8 @@ async def p2p_worker(quart_app):
 
         nursery.start_soon(request_handler)
         await p2p_node.run(
-            pubsub_topics=[COMMENT_TOPIC],
-            handler_callback=coordinator.handle_comment_message
+            pubsub_topics=[COMMENT_TOPIC, CRAWLER_TOPIC],
+            handler_callback=combined_handler
         )
 
 def run_p2p_thread(quart_app):
